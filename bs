@@ -1,0 +1,27 @@
+#!/bin/sh
+
+echo -------- setup
+ia16-elf-gcc -mtune=i8086 -c setup.s
+# ia16-elf-objdump -M i8086 -d setup.o
+
+echo -------- main
+ia16-elf-gcc -mtune=i8086 -fno-PIC -c main.c
+
+
+echo -------- cpu_start
+ia16-elf-gcc -mtune=i8086 -c cpu_start.s
+
+
+echo -------- ld
+ia16-elf-ld --architecture i8086 -nostdlib -Ttext=0x0000 setup.o main.o cpu_start.o -o flash.elf
+
+# ia16-elf-objcopy --remove-relocations=cpu_entry -O binary flash.elf flash.bin
+ia16-elf-objcopy  --set-section-flags 'cpu_entry=code,noload,alloc' --pad-to 0x10000 -O binary flash.elf flash.bin
+
+
+
+ia16-elf-objdump -j '.text' -j 'cpu_entry' -M i8086 -d flash.elf 
+
+echo -------- hexdump
+hexdump -C flash.bin 
+
