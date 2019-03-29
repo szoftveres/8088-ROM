@@ -49,5 +49,6 @@ load_int:
 
 cpu_start:
         jmp     $CSEG,$_start
-
+#        call     $CSEG,$_start
+        .asciz  "MKunSzabo"
 

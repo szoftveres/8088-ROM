@@ -7,15 +7,16 @@ OUTDIR = .
 PROGRAM = rom
 CC = ia16-elf-gcc
 AS = ia16-elf-gcc
-LD = ia16-elf-ld
-CFLAGS = -Wall -O0 -fno-PIC -funsigned-char -march=i8086 -mtune=i8086
+LD = ia16-elf-gcc
+CFLAGS = -Wall -O0 -fno-PIC -funsigned-char -march=i8086 -mtune=i8086 -L/home/martonk/mgc/embedded/codebench/lib/gcc/ia16-elf/6.2.0 -lgcc
 ASFLAGS = -march=i8086 -mtune=i8086
-LDFLAGS = --architecture i8086 -nostdlib -T ls.ld
+LDFLAGS = -march=i8086 -mtune=i8086 -T ls.ld -L/home/martonk/mgc/embedded/codebench/lib/gcc/ia16-elf/6.2.0 -lgcc
 
 ## Objects that must be built in order to link
 ## XXX The order is important, asmstart MUST be the first one !!
 OBJECTS = $(OBJDIR)/asmstart.o      \
           $(OBJDIR)/main.o          \
+          $(OBJDIR)/fat.o           \
 
 
 ## Build both compiler and program
@@ -23,8 +24,8 @@ all: rom-64k
 
 rom-64k: elf
 	ia16-elf-objcopy --set-section-flags '.cpu_entry=code,noload,alloc' --pad-to 0x10000 -O binary $(OBJDIR)/$(PROGRAM).elf $(OBJDIR)/$(PROGRAM).bin
-	ia16-elf-objdump -M i8086 -d $(OBJDIR)/$(PROGRAM).elf
-	#hexdump -C $(OBJDIR)/$(PROGRAM).bin
+	ia16-elf-objdump -M i8086 -D $(OBJDIR)/$(PROGRAM).elf
+	hexdump -C $(OBJDIR)/$(PROGRAM).bin
 
 
 ## Compile source files
