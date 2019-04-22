@@ -7,7 +7,9 @@
 
 
 .equ    DSEG,       0x0000
-.equ    ESEG,       0x1000
+.equ    ESEG,       0x4000
+.equ    ROMSEG,     0xE000      # First ROM address
+
 
 .equ    UART_BASE,  0x0020
 .equ    PIC_BASE,   0x0040
@@ -47,7 +49,6 @@ cpu_test:
         shl     $1, %ax
         jb      cpu_fail
 
-
         mov     $0xAAAA, %ax
 cpu_test_1:
         mov     %ax, %ds
@@ -77,34 +78,35 @@ cpu_ok:
         mov     $0x000,%ax      # Test first 64k RAM
 
 ##################################################
-# Test one segment (64k) of ram
+# Test minimal RAM
 # ax: segment
+
+.equ    MIN_RAM,    0x8000
 
 ram_test:
         mov     %ax, %ds
         mov     %ax, %es
 
-        mov     $0x0000, %cx    # cycle counter
-        mov     $0x5555, %ax    # pattern 1
-        mov     $0xAAAA, %bx    # pattern 2
+        movb    $0x55, %al      # pattern 1
+        movb    $0xAA, %bl      # pattern 2
+        mov     $MIN_RAM, %cx    # cycle counter
 ram_fill1_loop:
         mov     %cx, %di
         movb    %al, (%di)      # fill with pattern 1
-        inc     %cx
-        jnz     ram_fill1_loop
+        loop    ram_fill1_loop
+        mov     $MIN_RAM, %cx    # cycle counter
 ram_ver1_loop:
         mov     %cx, %di
         cmpb    (%di), %al      # verify against pattern 1
         jnz     ram_fail1
         movb    %bl, (%di)      # fill with pattern 2
-        inc     %cx
-        jnz     ram_ver1_loop
+        loop    ram_ver1_loop
+        mov     $MIN_RAM, %cx    # cycle counter
 ram_ver2_loop:
         mov     %cx, %di
         cmpb    (%di), %bl      # verify against pattern 2
         jnz     ram_fail2
-        inc     %cx
-        jnz     ram_ver2_loop
+        loop    ram_ver2_loop
         jmp     ram_ok
 ram_fail1:
         mov     $0x03, %bx
@@ -121,13 +123,14 @@ ram_ok:
         mov     %ax, %ss
         mov     $ESEG, %ax
         mov     %ax, %es
-        mov     $0x8000,%sp
+        mov     $RAM_BASE,%sp
 
         mov     %cs, %ax
 
 ##################################################
-# init hardware
+# init hardware and interrupt table
 
+        call    int_init
         call    led_off
         call    uart_init
         call    spi_init
@@ -137,7 +140,6 @@ ram_ok:
         call    print_banner
 
 ##################################################
-
 
 main_help:
         movw    $main_help_text, %si
@@ -160,11 +162,6 @@ mainloop:
         cmp     $'e', %al
         jnz     1f
         call    main_eseg_chg
-        jmp     2f              # help
-1:
-        cmp     $'s', %al
-        jnz     1f
-        call    main_spi
         jmp     2f              # help
 1:
         cmp     $'r', %al
@@ -200,7 +197,6 @@ main_help_text:
         .ascii "\n [nl]: help\n"
         .ascii   "    l: LED\n"
         .ascii   "    e: ES\n"
-        .ascii   "    s: SPI xmit\n"
         .ascii   "    r: receive to [ES:0000]\n"
         .ascii   "    g: execute at [ES:0000]\n"
         .ascii   "    j: execute at [ES:start]\n"
@@ -218,11 +214,15 @@ main_dump:
         movw    $text_main_dump_help, %si
         call    print_str_cs
 main_dump_loop:
+
+        mov     $0x10, %cx              # 16 lines
+1:
         pop     %ax
         mov     %ax, %si
         add     $0x10, %ax
         push    %ax
         call    dump_mem_line
+        loop    1b
 
         call    get_byte
         cmp     $'\n', %al
@@ -264,24 +264,6 @@ main_eseg_chg:
         call    get_h16
         jc      1f
         movw    %ax, %es
-1:
-        ret
-
-
-##################################################
-
-main_spi:
-        movb    $'>', %al
-        call    print_byte
-        call    get_h8
-        jc      1f
-
-        call    spi_transfer
-        push    %ax
-        movb    $'\n', %al
-        call    print_byte
-        pop     %ax
-        call    print_h8
 1:
         ret
 
@@ -335,16 +317,17 @@ text_jmp_start:
         .asciz  "\nstart>"
 
 ##################################################
-
 # al: data byte
 print_byte:
-        call    uart_send_byte
+        movb    $0x0E, %ah
+        int     $0x10
         ret
 
 ##################################################
 # al: return data byte
 get_byte:
-        call    uart_receive_byte
+        movb    $0x00, %ah
+        int     $0x16
         ret
 
 ##################################################
@@ -355,6 +338,10 @@ dump_mem_line:
         push    %cx
         push    %si
 
+        mov     %es, %ax
+        call    print_h16
+        movb    $':', %al
+        call    print_byte
         mov     %si, %ax
         call    print_h16
         movw    $text_mdump_sep, %si
@@ -369,11 +356,10 @@ dump_mline_loop1:
         call    print_h8
         movb    $' ', %al
         call    print_byte
-        dec     %cx
-        jnz     dump_mline_loop1
+        loop    dump_mline_loop1
 
-        movw    $text_mdump_sep, %si
-        call    print_str_cs
+        movb    $' ', %al
+        call    print_byte
         movb    $'|', %al
         call    print_byte
 
@@ -385,15 +371,14 @@ dump_mline_loop2:
         inc     %si
         cmp     $0x20, %al
         jb      dump_mline_loop2_subst
-        cmp     $0x7F, %al
+        cmp     $0x7E, %al
         ja      dump_mline_loop2_subst
         jmp     dump_mline_loop2_direct
 dump_mline_loop2_subst:
         movb    $'.', %al
 dump_mline_loop2_direct:
         call    print_byte
-        dec     %cx
-        jnz     dump_mline_loop2
+        loop    dump_mline_loop2
 
         movb    $'|', %al
         call    print_byte
@@ -414,12 +399,22 @@ text_mdump_sep:
 print_banner:
         movw    $text_banner, %si
         call    print_str_cs
+        movw    $text_cpu, %si
+        call    print_str_cs
+        call    cpu_id
+        mov     %ax, %si
+        call    print_str_cs
+        movb    $'\n', %al
+        call    print_byte
         ret
 
 text_banner:
-        .ascii "\n\n *****************\n"
-        .ascii     " * x86 light ROM *\n"
-        .asciz     " *****************\n\n"
+        .ascii "\n\n ********************\n"
+        .ascii     " * x86-light system *\n"
+        .asciz     " ********************\n\n"
+
+text_cpu:
+        .asciz  "CPU : "
 
 ##################################################
 
@@ -457,14 +452,14 @@ text_ES:
 text_SP:
         .asciz " SP:"
 
-
 ##################################################
 
-
-.include    "uart.i"
-.include    "string.i"
-.include    "led.i"
-.include    "spi.i"
+.include    "uart.inc"
+.include    "string.inc"
+.include    "led.inc"
+.include    "spi.inc"
+.include    "cpu.inc"
+.include    "int.inc"
 
 # ==== CPU cold start ====
 

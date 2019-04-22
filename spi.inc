@@ -85,8 +85,7 @@ spi_transfer_loop:
 
 
 # --- cycle counter
-        dec     %cx
-        jnz     spi_transfer_loop
+        loop     spi_transfer_loop
 
 
         pop     %ax

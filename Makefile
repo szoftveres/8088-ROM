@@ -26,8 +26,6 @@ rom-64k: elf
 	ia16-elf-objcopy -O binary --pad-to 0x10000 $(OBJDIR)/$(PROGRAM).elf $(OBJDIR)/$(PROGRAM).bin
 	ia16-elf-objdump -M i8086 -D $(OBJDIR)/$(PROGRAM).elf > $(OBJDIR)/$(PROGRAM).objdump
 	hexdump -C $(OBJDIR)/$(PROGRAM).bin
-	echo -n "r" > $(OBJDIR)/$(PROGRAM).rcvscript
-	cat $(OBJDIR)/$(PROGRAM).bin >> $(OBJDIR)/$(PROGRAM).rcvscript
 
 
 ## Compile source files
