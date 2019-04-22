@@ -15,17 +15,19 @@ LDFLAGS = -march=i8086 -mtune=i8086 -T ls.ld -L/home/martonk/mgc/embedded/codebe
 ## Objects that must be built in order to link
 ## XXX The order is important, asmstart MUST be the first one !!
 OBJECTS = $(OBJDIR)/asmstart.o      \
-          $(OBJDIR)/main.o          \
-          $(OBJDIR)/fat.o           \
+#          $(OBJDIR)/main.o          \
+#          $(OBJDIR)/fat.o           \
 
 
 ## Build both compiler and program
 all: rom-64k
 
 rom-64k: elf
-	ia16-elf-objcopy --set-section-flags '.cpu_entry=code,noload,alloc' --pad-to 0x10000 -O binary $(OBJDIR)/$(PROGRAM).elf $(OBJDIR)/$(PROGRAM).bin
-	ia16-elf-objdump -M i8086 -D $(OBJDIR)/$(PROGRAM).elf
+	ia16-elf-objcopy -O binary --pad-to 0x10000 $(OBJDIR)/$(PROGRAM).elf $(OBJDIR)/$(PROGRAM).bin
+	ia16-elf-objdump -M i8086 -D $(OBJDIR)/$(PROGRAM).elf > $(OBJDIR)/$(PROGRAM).objdump
 	hexdump -C $(OBJDIR)/$(PROGRAM).bin
+	echo -n "r" > $(OBJDIR)/$(PROGRAM).rcvscript
+	cat $(OBJDIR)/$(PROGRAM).bin >> $(OBJDIR)/$(PROGRAM).rcvscript
 
 
 ## Compile source files
