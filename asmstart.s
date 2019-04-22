@@ -194,14 +194,13 @@ mainloop:
         jmp     mainloop
 
 main_help_text:
-        .ascii "\n [nl]: help\n"
-        .ascii   "    l: LED\n"
-        .ascii   "    e: ES\n"
-        .ascii   "    r: receive to [ES:0000]\n"
-        .ascii   "    g: execute at [ES:0000]\n"
-        .ascii   "    j: execute at [ES:start]\n"
-        .asciz   "    d: dump [ES:start]\n\n"
-        .asciz   ""
+        .ascii "\n  [nl] : help\n"
+        .ascii   "     l : flip LED\n"
+        .ascii   "     e : set ES\n"
+        .ascii   "     r : receive to [ES:0000]\n"
+        .ascii   "     g : execute at [ES:0000]\n"
+        .ascii   "     j : execute at [ES:start]\n"
+        .asciz   "     d : dump [ES:start]\n\n"
 
 ##################################################
 
@@ -236,8 +235,8 @@ main_dump_loop:
 text_main_dump_start:
         .asciz  "\nstart>"
 text_main_dump_help:
-        .ascii "\n [nl]: continue\n"
-        .asciz   "[esc]: end\n"
+        .ascii "\n  [nl] : continue\n"
+        .asciz   " [esc] : end\n\n"
 
 ##################################################
 main_recv:
@@ -399,22 +398,34 @@ text_mdump_sep:
 print_banner:
         movw    $text_banner, %si
         call    print_str_cs
-        movw    $text_cpu, %si
+
+        movw    $text_rom, %si          # ROM date
+        call    print_str_cs
+        movw    $text_romdate, %si
+        call    print_str_cs
+        movb    $'\n', %al
+        call    print_byte
+
+        movw    $text_cpu, %si          # CPU type
         call    print_str_cs
         call    cpu_id
         mov     %ax, %si
         call    print_str_cs
         movb    $'\n', %al
         call    print_byte
+
         ret
 
 text_banner:
-        .ascii "\n\n ********************\n"
-        .ascii     " * x86-light system *\n"
-        .asciz     " ********************\n\n"
+        .ascii "\n\n *************\n"
+        .ascii     " * x86-light *\n"
+        .asciz     " *************\n\n"
 
+text_rom:
+        .asciz  " ROM : "
 text_cpu:
-        .asciz  "CPU : "
+        .asciz  " CPU : "
+        
 
 ##################################################
 
@@ -469,5 +480,6 @@ text_SP:
 
 cpu_start:
         jmp     $CSEG,$_start
-        .asciz  "MKunSzabo"
+text_romdate:
+.include    "date.inc"
 

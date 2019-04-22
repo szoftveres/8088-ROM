@@ -27,6 +27,10 @@ rom-64k: elf
 	ia16-elf-objdump -M i8086 -D $(OBJDIR)/$(PROGRAM).elf > $(OBJDIR)/$(PROGRAM).objdump
 	hexdump -C $(OBJDIR)/$(PROGRAM).bin
 
+date:
+	echo -n '.asciz "' > date.inc
+	echo -n `date +"%m-%d-%y"` >> date.inc
+	echo '"' >> date.inc
 
 ## Compile source files
 $(OBJDIR)/%.o : $(SRCDIR)/%.c
@@ -36,7 +40,7 @@ $(OBJDIR)/%.o : $(SRCDIR)/%.c
 $(OBJDIR)/%.o : $(SRCDIR)/%.s
 	$(AS) $(ASFLAGS) -c -o $(OBJDIR)/$*.o $<
 
-elf: $(OBJECTS)
+elf: date $(OBJECTS)
 	$(LD) $(LDFLAGS) -o $(OBJDIR)/$(PROGRAM).elf $(OBJECTS)
 
 
