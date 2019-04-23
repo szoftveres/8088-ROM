@@ -1,12 +1,11 @@
 .code16
-.arch i8086
+.arch i8086,nojumps             # see documentation
 
 
 .global main
 .global _start
 
 
-.equ    DSEG,       0x0000
 .equ    ESEG,       0x4000
 .equ    ROMSEG,     0xE000      # First ROM address
 
@@ -16,11 +15,23 @@
 .equ    IO_BASE,    0x0060
 
 
- # First address above the interrupt table
-.equ    RAM_BASE,           0x0400
+# upper 512 byte of the interrupt table
+.equ    SSEG,               0x0020
+.equ    STACKP,             0x0200
+
+# First address above the interrupt table
+.equ    DSEG,               0x0040
 
 
-# ==== Text ====
+##################################################
+.section .bss
+
+
+.local ramsize
+.comm ramsize, 0x02, 2
+
+
+##################################################
 .section .text
 
 _start:
@@ -75,38 +86,47 @@ cpu_fail:
         jmp     halt_blink
 cpu_ok:
 
-        mov     $0x000,%ax      # Test first 64k RAM
+##################################################
+# Skip all RAM checks when we're running from RAM
+# otherwise some checks would overwrite the program 
+# and stored data
+
+        mov     %cs, %ax
+        cmp     $ROMSEG, %ax
+        jb      skip_ram_checks
 
 ##################################################
 # Test minimal RAM
-# ax: segment
 
-.equ    MIN_RAM,    0x8000
+.equ    MIN_RAM,    0x7FFF      # first 32k
 
-ram_test:
-        mov     %ax, %ds
-        mov     %ax, %es
+        xor     %ax, %ax
+        mov     %ax, %ds        # first segment
 
         movb    $0x55, %al      # pattern 1
         movb    $0xAA, %bl      # pattern 2
-        mov     $MIN_RAM, %cx    # cycle counter
+
+        mov     $MIN_RAM, %cx   # cycle counter
 ram_fill1_loop:
         mov     %cx, %di
         movb    %al, (%di)      # fill with pattern 1
         loop    ram_fill1_loop
-        mov     $MIN_RAM, %cx    # cycle counter
+
+        mov     $MIN_RAM, %cx   # cycle counter
 ram_ver1_loop:
         mov     %cx, %di
         cmpb    (%di), %al      # verify against pattern 1
         jnz     ram_fail1
         movb    %bl, (%di)      # fill with pattern 2
         loop    ram_ver1_loop
-        mov     $MIN_RAM, %cx    # cycle counter
+
+        mov     $MIN_RAM, %cx   # cycle counter
 ram_ver2_loop:
         mov     %cx, %di
         cmpb    (%di), %bl      # verify against pattern 2
         jnz     ram_fail2
         loop    ram_ver2_loop
+
         jmp     ram_ok
 ram_fail1:
         mov     $0x03, %bx
@@ -116,14 +136,64 @@ ram_fail2:
         jmp     halt_blink
 ram_ok:
 
+
+##################################################
+# Detect total RAM
+# INT 12h should return this number
+
+.equ    RAM_DET_GRANUL,    0x0040      # every 1kbyte
+
+        movb    $0x55, %al      # pattern 1
+        movb    $0xAA, %bl      # pattern 2
+        xor     %di, %di    
+
+        xor     %cx, %cx        # cycle counter
+ram_det1_loop:
+        mov     %cx, %ds
+        movb    %al, (%di)      # fill with pattern 1
+        add     $RAM_DET_GRANUL, %cx
+        cmp     $ROMSEG, %cx
+        jnz     ram_det1_loop
+
+        xor     %cx, %cx        # cycle counter
+ram_det2_loop:
+        mov     %cx, %ds
+        cmpb    (%di), %al      # verify against pattern 1
+        jnz     ram_det_bail
+        movb    %bl, (%di)      # fill with pattern 2
+        add     $RAM_DET_GRANUL, %cx
+        cmp     $ROMSEG, %cx
+        jnz     ram_det2_loop
+
+        xor     %cx, %cx        # cycle counter
+ram_det3_loop:
+        mov     %cx, %ds
+        cmpb    (%di), %bl      # verify against pattern 2
+        jnz     ram_det_bail
+        add     $RAM_DET_GRANUL, %cx
+        cmp     $ROMSEG, %cx
+        jnz     ram_det3_loop
+
+ram_det_bail:
+        mov     $DSEG, %ax
+        mov     %ax, %ds
+        mov     %cx, %ax
+        movb    $6, %cl          # convert segment to kb
+        shr     %cl, %ax
+        mov     $ramsize, %di
+        mov     %ax, (%di)      # store the result
+
+skip_ram_checks:
+
 ##################################################
 # set up segment registers
         mov     $DSEG, %ax
         mov     %ax, %ds
+        mov     $SSEG, %ax
         mov     %ax, %ss
         mov     $ESEG, %ax
         mov     %ax, %es
-        mov     $RAM_BASE,%sp
+        mov     $STACKP,%sp
 
         mov     %cs, %ax
 
@@ -414,6 +484,15 @@ print_banner:
         movb    $'\n', %al
         call    print_byte
 
+        movw    $text_maxram, %si       # max RAM
+        call    print_str_cs
+        int     $0x12                   # get the value 
+        call    print_dec16
+        movb    $'k', %al
+        call    print_byte
+        movb    $'\n', %al
+        call    print_byte
+
         ret
 
 text_banner:
@@ -425,6 +504,8 @@ text_rom:
         .asciz  " ROM : "
 text_cpu:
         .asciz  " CPU : "
+text_maxram:
+        .asciz  " RAM : "
         
 
 ##################################################

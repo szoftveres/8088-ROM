@@ -46,7 +46,7 @@ int_table:
         .word   int_dummy       # INT 0F - IRQ7 - UART
         .word   int_10h         # INT 10 - character output
         .word   int_dummy       # INT 11
-        .word   int_dummy       # INT 12
+        .word   int_12h         # INT 12 - return RAM size
         .word   int_dummy       # INT 13
         .word   int_dummy       # INT 14
         .word   int_dummy       # INT 15
@@ -68,6 +68,22 @@ int_dummy:
         iret
 
 ##################################################
+# INT 12H handler - return RAM size
+# ax: result
+
+int_12h:
+        push    %di
+        push    %ds
+        mov     $DSEG, %ax
+        mov     %ax, %ds
+        mov     $ramsize, %di
+        mov     (%di), %ax      # get the value into ax
+        pop     %ds
+        pop     %di
+        iret
+
+##################################################
+
 # dispatch INT 10
 
 int_10h:

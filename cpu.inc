@@ -24,53 +24,5 @@ text_cpu_8088:
 
 
 ##################################################
-# ax: RAM top segment + 1
-
-ram_det:
-
-        push    %bx
-        push    %cx
-        push    %di
-
-        push    %ds             # save DS
-
-        mov     $0x0000, %cx    # segment counter
-        mov     $0x0000, %di    
-ram_det_loop:
-
-        mov     %cx, %ds
-
-        movb    (%di), %bl      # save contents
-        movb    $0x55, %al
-        movb    %al, (%di)      # fill with pattern 1
-        movb    (%di), %al
-        movb    %bl, (%di)      # restore contents
-        cmpb    $0x55, %al      # compare pattern
-        jnz     ram_det_bail
-
-        movb    (%di), %bl      # save contents
-        movb    $0xAA, %al
-        movb    %al, (%di)      # fill with pattern 2
-        movb    (%di), %al
-        movb    %bl, (%di)      # restore contents
-        cmpb    $0xAA, %al      # compare pattern
-        jnz     ram_det_bail
-
-        add     $0x0010, %cx    # check every 256th byte
-        cmp     $ROMSEG, %cx
-        jnz     ram_det_loop
-
-ram_det_bail:
-
-        pop     %ds             # restore DS
-
-        mov     %cx, %ax        # result in AX
-
-        pop     %di
-        pop     %cx
-        pop     %bx
-        ret
-
-##################################################
 
 

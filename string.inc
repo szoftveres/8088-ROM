@@ -127,6 +127,30 @@ get_h16:
         ret
 
 ##################################################
+# ax: data
+
+print_dec16:
+        push    %bx
+        push    %dx
+
+        xor     %dx, %dx
+        mov     $10, %bx
+
+        div     %bx
+        or      %ax, %ax
+        jz      1f
+
+        call    print_dec16
+1:
+        mov     %dx, %ax
+        add     $'0', %al
+        call    print_byte
+        pop     %dx
+        pop     %bx
+        ret
+
+
+##################################################
 # Print null-terminated string from current DS
 # si: address
 
