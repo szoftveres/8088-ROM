@@ -30,6 +30,8 @@
 .local ramsize
 .comm ramsize, 0x02, 2
 
+.local uart_int_cnt
+.comm uart_int_cnt, 0x02, 2
 
 ##################################################
 .section .text
@@ -197,16 +199,23 @@ skip_ram_checks:
 
         mov     %cs, %ax
 
+
+        xor     %ax, %ax
+        mov     $uart_int_cnt, %di
+        mov     %ax, (%di)
+
 ##################################################
 # init hardware and interrupt table
 
         call    int_init
-        call    led_off
+        call    pic_init
         call    uart_init
         call    spi_init
+        sti
 
 ##################################################
 
+        call    led_off
         call    print_banner
 
 ##################################################

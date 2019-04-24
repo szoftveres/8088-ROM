@@ -21,7 +21,8 @@ uart_init:
         movb    $0x87, %al              # FIFO enable, clear, 8 byte trigger
         outb    %al, (%dx)
         mov     $UART_BASE+1, %dx       # IER
-        movb    $0x03, %al              # enable tx and rx interrupts
+#        movb    $0x03, %al              # enable tx and rx interrupts
+        movb    $0x05, %al              # rx interrupts
         outb    %al, (%dx)
         ret
 

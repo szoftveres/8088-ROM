@@ -52,40 +52,31 @@ hb_break_loop:
 ##################################################
 
 led_flip:
-        push    %dx
         push    %ax
-        mov     $IO_BASE, %dx
-        in      (%dx), %al
-        xor     $LED_BIT, %ax
-        out     %al, (%dx)
+        inb     $IO_BASE, %al
+        xor     $LED_BIT, %al
+        outb    %al, $IO_BASE
         pop     %ax
-        pop     %dx
         ret
 
 ##################################################
 
 led_on:
-        push    %dx
         push    %ax
-        mov     $IO_BASE, %dx
-        in      (%dx), %al
-        or      $LED_BIT, %ax
-        out     %al, (%dx)
+        inb     $IO_BASE, %al
+        or      $LED_BIT, %al
+        outb    %al, $IO_BASE
         pop     %ax
-        pop     %dx
         ret
 
 ##################################################
 
 led_off:
-        push    %dx
         push    %ax
-        mov     $IO_BASE, %dx
-        in      (%dx), %al
-        and     $NLED_BIT, %ax
-        out     %al, (%dx)
+        inb     $IO_BASE, %al
+        and     $NLED_BIT, %al
+        outb    %al, $IO_BASE
         pop     %ax
-        pop     %dx
         ret
 
 
