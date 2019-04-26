@@ -1,4 +1,6 @@
 
+.global print_dec16
+.global print_byte
 
 ##################################################
 # al: data
@@ -14,6 +16,7 @@ print_h4_num:
         call    print_byte
         pop     %ax
         ret
+
 
 ##################################################
 # [0-9, a-f, A-F]

@@ -65,18 +65,16 @@ int_table:
 
 pic_init:
         push    %ax
+
         movb    $0x13, %al          # ICW1 - edge triggered, single, ICW4
         outb    %al, $PIC_BASE+0
         movb    $0x08, %al          # ICW2 - interrupt vector offset = 8
         outb    %al, $PIC_BASE+1
-        movb    $0x01,%al           # ICW4 - non buffered mode, 8086/8088
+        movb    $0x01, %al          # ICW4 - non buffered mode, 8086/8088
         outb    %al, $PIC_BASE+1
-
 
         movb    $0x7F, %al          # OCW1: unmask UART
-#        movb    $0x00, %al          # OCW1: unmask ALL
         outb    %al, $PIC_BASE+1
-
 
         pop     %ax
         ret
@@ -87,20 +85,6 @@ pic_eoi:
         outb    %al, $PIC_BASE+0
         pop     %ax
         ret
-
-int_uart:
-        push    %ax
-        push    %di
-        call    pic_eoi
-        call    led_flip
-        mov     $uart_int_cnt, %di
-        mov     (%di), %ax
-        inc     %ax
-        mov     %ax, (%di)
-
-        pop     %di
-        pop     %ax
-        iret
 
 ##################################################
 # dummy handler

@@ -20,9 +20,8 @@ hb_off_loop:
         nop
         or      %cx,%cx
         jnz     hb_off_loop
-        mov     $IO_BASE, %dx
         movb    $LED_BIT, %al
-        out     %al, (%dx)
+        outb    %al, $IO_BASE
 
         mov     $0x2000, %cx
 hb_on_loop:
@@ -31,9 +30,8 @@ hb_on_loop:
         nop
         or      %cx,%cx
         jnz     hb_on_loop
-        mov     $IO_BASE, %dx
         movb    $0x00, %al
-        out     %al, (%dx)
+        outb    %al, $IO_BASE
 
         dec     %bx
         jne     hb_blinks

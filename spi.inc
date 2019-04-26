@@ -35,8 +35,6 @@
 spi_transfer:
         push    %bx
         push    %cx
-        push    %dx
-        mov     $IO_BASE, %dx
         mov     $0x08, %cx              # cycle counter
         push    %ax
 
@@ -46,7 +44,7 @@ spi_transfer_loop:
         pop     %ax
         mov     %ax, %bx
         push    %ax
-        in      (%dx), %al
+        inb     $IO_BASE, %al
         and     $0x80, %bl              # MSB
         jz      1f
         or      $MOSI_BIT, %al
@@ -54,18 +52,18 @@ spi_transfer_loop:
 1:
         and     $NMOSI_BIT, %al
 2:
-        out     %al, (%dx)
+        outb    %al, $IO_BASE
 
 
 # --- clock flip
-        in      (%dx), %al
+        inb     $IO_BASE, %al
         xor     $CLK_BIT, %ax
-        out     %al, (%dx)
+        outb    %al, $IO_BASE
 
 
 # --- MSB in and rotate
 
-        in      (%dx), %al
+        inb     $IO_BASE, %al
         movb    %al, %bl
         pop     %ax
         and     $MISO_BIT, %bl
@@ -79,9 +77,9 @@ spi_transfer_loop:
         push    %ax
 
 # --- clock flip
-        in      (%dx), %al
+        inb     $IO_BASE, %al
         xor     $CLK_BIT, %ax
-        out     %al, (%dx)
+        outb    %al, $IO_BASE
 
 
 # --- cycle counter
@@ -89,7 +87,6 @@ spi_transfer_loop:
 
 
         pop     %ax
-        pop     %dx
         pop     %cx
         pop     %bx
         ret
@@ -97,45 +94,34 @@ spi_transfer_loop:
 ##################################################
 
 spi_init:
-        push    %dx
         push    %ax
         call    spi_deassert
-        mov     $IO_BASE, %dx
-        in      (%dx), %al
+        inb     $IO_BASE, %al
         and     $NCLK_BIT, %al          # clock init state: L
-        out     %al, (%dx)
+        outb    %al, $IO_BASE
         call    spi_assert
         call    spi_deassert
         pop     %ax
-        pop     %dx
         ret
 
 ##################################################
 
 spi_assert:
-        push    %dx
         push    %ax
-        mov     $IO_BASE, %dx
-        in      (%dx), %al
+        inb     $IO_BASE, %al
         and     $NCS_BIT, %al
-        out     %al, (%dx)
+        outb    %al, $IO_BASE
         pop     %ax
-        pop     %dx
         ret
 
 ##################################################
 
 spi_deassert:
-        push    %dx
         push    %ax
-        mov     $IO_BASE, %dx
-        in      (%dx), %al
+        inb     $IO_BASE, %al
         or      $CS_BIT, %al
-        out     %al, (%dx)
+        outb    %al, $IO_BASE
         pop     %ax
-        pop     %dx
         ret
-
-
 
 

@@ -1,5 +1,5 @@
 .code16
-.arch i8086,nojumps             # see documentation
+.arch i8086  #,nojumps             # see documentation
 
 
 .global main
@@ -28,10 +28,7 @@
 
 
 .local ramsize
-.comm ramsize, 0x02, 2
-
-.local uart_int_cnt
-.comm uart_int_cnt, 0x02, 2
+.comm ramsize, 2, 2
 
 ##################################################
 .section .text
@@ -197,21 +194,14 @@ skip_ram_checks:
         mov     %ax, %es
         mov     $STACKP,%sp
 
-        mov     %cs, %ax
-
-
-        xor     %ax, %ax
-        mov     $uart_int_cnt, %di
-        mov     %ax, (%di)
-
 ##################################################
 # init hardware and interrupt table
 
         call    int_init
         call    pic_init
+        sti
         call    uart_init
         call    spi_init
-        sti
 
 ##################################################
 
@@ -232,11 +222,6 @@ mainloop:
         jnz     1f
         call    main_dump
         jmp     2f              # help
-1:
-        cmp     $'l', %al
-        jnz     1f
-        call    main_ledflip
-        jmp     3f              # nothing
 1:
         cmp     $'e', %al
         jnz     1f
@@ -274,7 +259,6 @@ mainloop:
 
 main_help_text:
         .ascii "\n  [nl] : help\n"
-        .ascii   "     l : flip LED\n"
         .ascii   "     e : set ES\n"
         .ascii   "     r : receive to [ES:0000]\n"
         .ascii   "     g : execute at [ES:0000]\n"
@@ -359,12 +343,6 @@ main_exec:
         movb    $'\n', %al
         call    print_byte
         lret
-
-##################################################
-
-main_ledflip:
-        call    led_flip
-        ret
 
 ##################################################
 
@@ -506,7 +484,7 @@ print_banner:
 
 text_banner:
         .ascii "\n\n *************\n"
-        .ascii     " * x86-light *\n"
+        .ascii     " * small x86 *\n"
         .asciz     " *************\n\n"
 
 text_rom:
@@ -524,14 +502,17 @@ print_seginfo:
         call    print_str_cs
         movw    %cs, %ax
         call    print_h16
+
         movw    $text_DS, %si
         call    print_str_cs
         movw    %ds, %ax
         call    print_h16
+
         movw    $text_ES, %si
         call    print_str_cs
         movw    %es, %ax
         call    print_h16
+
         movw    $text_SP, %si
         call    print_str_cs
         movw    %ss, %ax
@@ -540,6 +521,13 @@ print_seginfo:
         call    print_byte
         movw    %sp, %ax
         call    print_h16
+
+        movw    $text_flags, %si
+        call    print_str_cs
+        pushf
+        pop     %ax
+        call    print_h16
+
         movb    $'\n', %al
         call    print_byte
         ret
@@ -552,6 +540,8 @@ text_ES:
         .asciz " ES:"
 text_SP:
         .asciz " SP:"
+text_flags:
+        .asciz " SR:"
 
 ##################################################
 
