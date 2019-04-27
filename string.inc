@@ -17,7 +17,6 @@ print_h4_num:
         pop     %ax
         ret
 
-
 ##################################################
 # [0-9, a-f, A-F]
 # al: return data
@@ -151,7 +150,6 @@ print_dec16:
         pop     %dx
         pop     %bx
         ret
-
 
 ##################################################
 # Print null-terminated string from current DS

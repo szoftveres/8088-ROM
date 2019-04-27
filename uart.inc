@@ -1,5 +1,4 @@
 
-
 ##################################################
 .section .bss
 
@@ -37,33 +36,29 @@ uart_init:
         ret
 
 ##################################################
+# UART interrupt service
 
 int_uart:
         push    %ax
-        push    %bp
         push    %si
 1:
         inb     $UART_BASE+5, %al       # LSR
         and     $0x0001, %ax            # byte received?
         jz      2f
 
-        mov     $uart_rcvbuf, %bp
         mov     uart_rcvbuf_wr, %si
         inc     %si
         and     $0x003F, %si            # 64
         mov     %si, uart_rcvbuf_wr
         inb     $UART_BASE+0, %al
-        movb    %al, (%bp,%si)
+        movb    %al, uart_rcvbuf(%si)
 
         jmp     1b
 2:
-
         pop     %si
-        pop     %bp
         pop     %ax
         call    pic_eoi
         iret
-
 
 ##################################################
 # al: data byte
@@ -81,41 +76,23 @@ uart_send_poll:
 ##################################################
 # al: return data byte
 
-# uart_receive_byte:
-#         inb     $UART_BASE+5, %al       # LSR
-#         and     $0x0001, %ax
-#         jz      uart_receive_byte
-#         inb     $UART_BASE+0, %al
-#        ret
-
 uart_receive_byte:
-        push    %bp
         push    %si
 1:
         mov     uart_rcvbuf_rd, %si
-        mov     uart_rcvbuf_wr, %ax
-        cmp     %ax, %si
+        cmp     uart_rcvbuf_wr, %si
         jnz     2f
 
-        sti
-        call    led_on
-        hlt
-        call    led_off
-        cli
+        call    wait
+
         jmp     1b
 2:
-
-        mov     $uart_rcvbuf, %bp
         inc     %si
         and     $0x003F, %si            # 64
         mov     %si, uart_rcvbuf_rd
-        movb    (%bp,%si), %al
-
+        movb    uart_rcvbuf(%si), %al
         pop     %si
-        pop     %bp
-
         ret
-
 
 ##################################################
 

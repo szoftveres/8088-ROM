@@ -17,8 +17,7 @@
 # BIT 5
 .equ    DET_BIT,        0x20
 
-
-##################
+##################################################
 # SPI mode 0:
 # clock init state: L
 # 1) data to MOSI
@@ -27,7 +26,6 @@
 # 4) clock H to L
 # MSB first
 
-
 ##################################################
 # CS must be asserted separately
 # al: data
@@ -35,8 +33,9 @@
 spi_transfer:
         push    %bx
         push    %cx
-        mov     $0x08, %cx              # cycle counter
         push    %ax
+
+        mov     $0x08, %cx              # cycle counter
 
 spi_transfer_loop:
 
@@ -54,12 +53,10 @@ spi_transfer_loop:
 2:
         outb    %al, $IO_BASE
 
-
 # --- clock flip
         inb     $IO_BASE, %al
         xor     $CLK_BIT, %ax
         outb    %al, $IO_BASE
-
 
 # --- MSB in and rotate
 
@@ -81,10 +78,8 @@ spi_transfer_loop:
         xor     $CLK_BIT, %ax
         outb    %al, $IO_BASE
 
-
 # --- cycle counter
         loop     spi_transfer_loop
-
 
         pop     %ax
         pop     %cx
@@ -123,5 +118,4 @@ spi_deassert:
         outb    %al, $IO_BASE
         pop     %ax
         ret
-
 

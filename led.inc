@@ -2,7 +2,6 @@
 .equ    LED_BIT,    0x08
 .equ    NLED_BIT,    0xF7
 
-
 ##################################################
 # doesn't use neither data nor stack (RAM)
 # bx: number of blinks
@@ -46,7 +45,6 @@ hb_break_loop:
 
         jmp     hb_forever
 
-
 ##################################################
 
 led_flip:
@@ -76,6 +74,4 @@ led_off:
         outb    %al, $IO_BASE
         pop     %ax
         ret
-
-
 
