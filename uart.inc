@@ -15,9 +15,9 @@ uart_init:
         push    %ax
         movb    $0x80, %al              # DLAB = 1
         outb    %al, $UART_BASE+3       # LCR
-        movb    $0x04, %al              # 16 (38400 baud)
+        movb    $0x06, %al              # 6 (38400 baud @ 3.6864MHz)
         outb    %al, $UART_BASE+0       # divisor LSB
-        movb    $0x00, %al              # 0  (38400 baud)
+        movb    $0x00, %al              # 0 (38400 baud @ 3.6864MHz)
         outb    %al, $UART_BASE+1       # divisor MSB
         movb    $0x03, %al              # DLAB = 0,    N,8,1
         outb    %al, $UART_BASE+3       # LCR

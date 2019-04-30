@@ -113,6 +113,7 @@ int_12h:
         mov     %ax, %ds
         mov     $ramsize, %di
         mov     (%di), %ax      # get the value into ax
+        clc
         pop     %ds
         pop     %di
         iret
@@ -124,12 +125,9 @@ int_12h:
 int_10h:
         cmp     $0x0E, %ah      # AH = 0x0E
         jnz     1f
-        call    int_10_0E
-        jmp     2f
+        jmp     int_10_0E
 1:
-
-2:
-        iret
+        jmp     int_dummy
 
 ##################################################
 # dispatch INT 16
@@ -137,12 +135,9 @@ int_10h:
 int_16h:
         or      %ah, %ah        # AH = 0x00
         jnz     1f
-        call    int_16_00
-        jmp     2f
+        jmp     int_16_00
 1:
-
-2:
-        iret
+        jmp     int_dummy
 
 ##################################################
 # character input
@@ -150,7 +145,8 @@ int_16h:
 
 int_16_00:
         call    uart_receive_byte
-        ret
+        clc
+        iret
 
 ##################################################
 # character output
@@ -158,7 +154,8 @@ int_16_00:
 
 int_10_0E:
         call    uart_send_byte
-        ret
+        clc
+        iret
 
 ##################################################
 

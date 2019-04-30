@@ -24,6 +24,8 @@ echo -n "sending.."
 cat ./rom.bin >> /dev/ttyUSB0
 echo "done"
 sleep 4
-echo -n "g" >> /dev/ttyUSB0
+echo -n "g0000" >> /dev/ttyUSB0
+
+# minicom
 
 

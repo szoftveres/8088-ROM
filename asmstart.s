@@ -1,19 +1,15 @@
 .code16
 .arch i8086  #,nojumps             # see documentation
 
-
 .global main
 .global _start
-
 
 .equ    ESEG,       0x4000
 .equ    ROMSEG,     0xE000      # First ROM address
 
-
 .equ    UART_BASE,  0x0020
 .equ    PIC_BASE,   0x0040
 .equ    IO_BASE,    0x0060
-
 
 # upper 512 byte of the interrupt table
 .equ    SSEG,               0x0020
@@ -22,10 +18,8 @@
 # First address above the interrupt table
 .equ    DSEG,               0x0040
 
-
 ##################################################
 .section .bss
-
 
 .local ramsize
 .comm ramsize, 2, 2
@@ -214,6 +208,7 @@ main_help:
         movw    $main_help_text, %si
         call    print_str_cs
         call    print_seginfo
+        call    print_regs
 
 mainloop:
         call    get_byte
@@ -234,11 +229,6 @@ mainloop:
         jmp     2f              # help
 1:
         cmp     $'g', %al
-        jnz     1f
-        call    main_exec
-        jmp     2f              # help
-1:
-        cmp     $'j', %al
         jnz     1f
         call    main_jmp
         jmp     2f              # help
@@ -261,8 +251,7 @@ main_help_text:
         .ascii "\n  [nl] : help\n"
         .ascii   "     e : set ES\n"
         .ascii   "     r : receive to [ES:0000]\n"
-        .ascii   "     g : execute at [ES:0000]\n"
-        .ascii   "     j : execute at [ES:start]\n"
+        .ascii   "     g : execute at [ES:start]\n"
         .asciz   "     d : dump [ES:start]\n\n"
 
 ##################################################
@@ -271,7 +260,7 @@ main_dump:
         movw    $text_main_dump_start, %si
         call    print_str_cs
         call    get_h16
-        jc      1f
+        jc      2f
         push    %ax
         movw    $text_main_dump_help, %si
         call    print_str_cs
@@ -292,7 +281,7 @@ main_dump_loop:
         cmp     $'\r', %al
         jz      main_dump_loop
         pop     %ax
-1:
+2:
         ret
 
 text_main_dump_start:
@@ -328,21 +317,6 @@ main_eseg_chg:
         movw    %ax, %es
 1:
         ret
-
-##################################################
-
-main_exec:
-        mov     %es, %ax
-        push    %ax
-        call    print_h16
-        movb    $':', %al
-        call    print_byte
-        mov     $0x0000, %ax
-        push    %ax
-        call    print_h16
-        movb    $'\n', %al
-        call    print_byte
-        lret
 
 ##################################################
 
@@ -387,70 +361,6 @@ get_byte:
         ret
 
 ##################################################
-# es:si : address
-
-dump_mem_line:
-        push    %ax
-        push    %cx
-        push    %si
-
-        mov     %es, %ax
-        call    print_h16
-        movb    $':', %al
-        call    print_byte
-        mov     %si, %ax
-        call    print_h16
-        movw    $text_mdump_sep, %si
-        call    print_str_cs
-
-        pop     %si
-        push    %si
-        mov     $0x0010, %cx              # cycle counter
-dump_mline_loop1:
-        movb    %es:(%si), %al
-        inc     %si
-        call    print_h8
-        movb    $' ', %al
-        call    print_byte
-        loop    dump_mline_loop1
-
-        movb    $' ', %al
-        call    print_byte
-        movb    $'|', %al
-        call    print_byte
-
-        pop     %si
-        push    %si
-        mov     $0x0010, %cx              # cycle counter
-dump_mline_loop2:
-        movb    %es:(%si), %al
-        inc     %si
-        cmp     $0x20, %al
-        jb      dump_mline_loop2_subst
-        cmp     $0x7E, %al
-        ja      dump_mline_loop2_subst
-        jmp     dump_mline_loop2_direct
-dump_mline_loop2_subst:
-        movb    $'.', %al
-dump_mline_loop2_direct:
-        call    print_byte
-        loop    dump_mline_loop2
-
-        movb    $'|', %al
-        call    print_byte
-        movb    $'\n', %al
-        call    print_byte
-
-        pop     %si
-        pop     %cx
-        pop     %ax
-        ret
-
-text_mdump_sep:
-        .asciz "  "
-
-
-##################################################
 
 print_banner:
         movw    $text_banner, %si
@@ -493,55 +403,6 @@ text_cpu:
         .asciz  " CPU : "
 text_maxram:
         .asciz  " RAM : "
-        
-
-##################################################
-
-print_seginfo:
-        movw    $text_CS, %si
-        call    print_str_cs
-        movw    %cs, %ax
-        call    print_h16
-
-        movw    $text_DS, %si
-        call    print_str_cs
-        movw    %ds, %ax
-        call    print_h16
-
-        movw    $text_ES, %si
-        call    print_str_cs
-        movw    %es, %ax
-        call    print_h16
-
-        movw    $text_SP, %si
-        call    print_str_cs
-        movw    %ss, %ax
-        call    print_h16
-        movb    $':', %al
-        call    print_byte
-        movw    %sp, %ax
-        call    print_h16
-
-        movw    $text_flags, %si
-        call    print_str_cs
-        pushf
-        pop     %ax
-        call    print_h16
-
-        movb    $'\n', %al
-        call    print_byte
-        ret
-
-text_CS:
-        .asciz "CS:"
-text_DS:
-        .asciz " DS:"
-text_ES:
-        .asciz " ES:"
-text_SP:
-        .asciz " SP:"
-text_flags:
-        .asciz " SR:"
 
 ##################################################
 
@@ -551,6 +412,7 @@ text_flags:
 .include    "spi.inc"
 .include    "cpu.inc"
 .include    "int.inc"
+.include    "misc.inc"
 
 # ==== CPU cold start ====
 
