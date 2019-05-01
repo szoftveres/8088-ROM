@@ -202,6 +202,11 @@ skip_ram_checks:
         call    led_off
         call    print_banner
 
+        call    check_flash_cs
+        jnz     1f      
+        call    print_romid
+1:
+
 ##################################################
 
 main_help:
@@ -413,6 +418,7 @@ text_maxram:
 .include    "cpu.inc"
 .include    "int.inc"
 .include    "misc.inc"
+.include    "flash.inc"
 
 # ==== CPU cold start ====
 

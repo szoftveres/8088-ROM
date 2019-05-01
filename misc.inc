@@ -65,6 +65,20 @@ text_mdump_sep:
 
 ##################################################
 
+print_romid:
+        movw    $text_romid, %si
+        call    print_str_cs
+        call    get_rom_id
+        call    print_h16
+        movb    $'\n', %al
+        call    print_byte
+        ret
+
+text_romid:
+        .asciz "ROM ID:"
+
+##################################################
+
 print_seginfo:
         movw    $text_CS, %si
         call    print_str_cs
