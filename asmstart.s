@@ -248,6 +248,11 @@ mainloop:
         call    main_flash
         jmp     2f              # help
 1:
+        cmp     $'t', %al
+        jnz     1f
+        call    main_spi_send
+        jmp     2f              # help
+1:
         cmp     $'\n', %al
         jnz     1f
         jmp     2f              # help
@@ -338,10 +343,23 @@ main_eseg_chg:
 
 ##################################################
 
+main_spi_send:
+        movb    $0x55, %al
+        call    spi_transfer
+        ret
+##################################################
+
 main_flash:
         call    check_flash_cs
         jnz     1f
-        call    program_seg
+        movb    $'\n', %al
+        call    print_byte
+
+        call    erase_seg
+        jc      1f
+        call    byte_program_seg
+        jc      1f
+        call    verify_seg
 1:
         ret
 

@@ -172,76 +172,113 @@ erase_chip:
         ret
 
 ##################################################
-# %di: address
-# %al: data
+# %es:(%di): address (%di is incremented by %cx)
+# %cx: sect size (1 means byte-programming)
 # carry: error
 
-program_byte:
+program_sector:
+        push    %cx
         push    %ax
         push    %di
-
         movb    $0xA0, %al
         movw    $0x5555, %di
         call    flash_cmd
-
         pop     %di
         pop     %ax
+
+sect_byte_loop:
+        movb    %es:(%di), %al
         call    flash_write
         call    flash_wait_complete
+        jc      1f
+        inc     %di
+        dec     %cx
+        jnz     sect_byte_loop
+
+1:
+        pop     %cx
         ret
 
 ##################################################
-# es: data source
+##################################################
+##################################################
+##################################################
+
+
+##################################################
 # carry: error
 
-program_seg:
+erase_seg:
         push    %ax
-        push    %cx
         push    %dx
 
-        movb    $'\n', %al
-        call    print_byte
-
-        movw    $0x0000, %cx            # cycle counter
-sector_loop:
-        mov     %cx, %di
+        movw    $0x0000, %di            # cycle counter
+erase_seg_loop:
         call    erase_sector
         jc      1f
         movb    $'-', %al
         call    print_byte
-        add     $FLASH_SECT_SIZE, %cx
-        jnz     sector_loop
+        add     $FLASH_SECT_SIZE, %di
+        jnz     erase_seg_loop
 
         movb    $'\n', %al
         call    print_byte
 
-        movw    $0x0000, %cx            # cycle counter
+        clc
+1:
+        pop     %dx
+        pop     %ax
+        ret
+
+##################################################
+# es: source seg
+# carry: error
+
+byte_program_seg:
+        push    %ax
+        push    %dx
+
+        movw    $0x0000, %di            # cycle counter
         movw    $FLASH_SECT_SIZE, %dx   # cycle counter
-byte_loop:
-        mov     %cx, %di
+        movw    $0x0001, %cx            # programming size
+byte_program_seg_loop:
         movb    %es:(%di), %al
-        call    program_byte
+        call    program_sector
         jc      1f
 
         dec     %dx
         jnz     2f
         movw    $FLASH_SECT_SIZE, %dx   # cycle counter
-        movb    $'+', %al
+        movb    $'#', %al
         call    print_byte
 2:
-        inc     %cx
-        jnz     byte_loop
+        or      %di, %di                # di is auto-incremented
+        jnz     byte_program_seg_loop
 
         movb    $'\n', %al
         call    print_byte
 
-        movw    $0x0000, %cx            # cycle counter
+        clc
+1:
+        pop     %dx
+        pop     %ax
+        ret
+
+##################################################
+# es: source seg
+# carry: error
+
+verify_seg:
+        push    %ax
+        push    %dx
+        movw    $0x0000, %di            # cycle counter
         movw    $FLASH_SECT_SIZE, %dx   # cycle counter
-verify_loop:
-        mov     %cx, %di
+verify_seg_loop:
         call    flash_read
+        stc
         cmpb    %es:(%di), %al
         jnz     1f
+        clc
 
         dec     %dx
         jnz     2f
@@ -249,15 +286,15 @@ verify_loop:
         movb    $'=', %al
         call    print_byte
 2:
-        inc     %cx
-        jnz     verify_loop
+        inc     %di
+        jnz     verify_seg_loop
 
         movb    $'\n', %al
         call    print_byte
 
+        clc
 1:
         pop     %dx
-        pop     %cx
         pop     %ax
         ret
 
