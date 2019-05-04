@@ -9,8 +9,7 @@ dump_mem_line:
 
         mov     %es, %ax
         call    print_h16
-        movb    $':', %al
-        call    print_byte
+        PRINT_CHAR $':'
         mov     %si, %ax
         call    print_h16
         movw    $text_mdump_sep, %si
@@ -23,14 +22,11 @@ dump_mline_loop1:
         movb    %es:(%si), %al
         inc     %si
         call    print_h8
-        movb    $' ', %al
-        call    print_byte
+        PRINT_CHAR $' '
         loop    dump_mline_loop1
 
-        movb    $' ', %al
-        call    print_byte
-        movb    $'|', %al
-        call    print_byte
+        PRINT_CHAR $' '
+        PRINT_CHAR $'|'
 
         pop     %si
         push    %si
@@ -46,13 +42,11 @@ dump_mline_loop2:
 dump_mline_loop2_subst:
         movb    $'.', %al
 dump_mline_loop2_direct:
-        call    print_byte
+        PRINT_CHAR
         loop    dump_mline_loop2
 
-        movb    $'|', %al
-        call    print_byte
-        movb    $'\n', %al
-        call    print_byte
+        PRINT_CHAR $'|'
+        PRINT_CHAR $'\n'
 
         pop     %si
         pop     %cx
@@ -70,8 +64,7 @@ print_romid:
         call    print_str_cs
         call    get_rom_id
         call    print_h16
-        movb    $'\n', %al
-        call    print_byte
+        PRINT_CHAR $'\n'
         ret
 
 text_romid:
@@ -99,13 +92,11 @@ print_seginfo:
         call    print_str_cs
         movw    %ss, %ax
         call    print_h16
-        movb    $':', %al
-        call    print_byte
+        PRINT_CHAR $':'
         movw    %sp, %ax
         call    print_h16
 
-        movb    $'\n', %al
-        call    print_byte
+        PRINT_CHAR $'\n'
         ret
 
 text_CS:
@@ -174,8 +165,7 @@ print_regs:
         pop     %ax
         call    print_h16
 
-        movb    $'\n', %al
-        call    print_byte
+        PRINT_CHAR $'\n'
 
         pop     %si
         pop     %ax

@@ -1,6 +1,5 @@
 
 .global print_dec16
-.global print_byte
 
 ##################################################
 # al: data
@@ -12,8 +11,8 @@ print_h4:
         cmp     $0x3a, %ax
         jb      print_h4_num
         add     $0x07, %ax
-print_h4_num:        
-        call    print_byte
+print_h4_num:
+        PRINT_CHAR
         pop     %ax
         ret
 
@@ -23,7 +22,7 @@ print_h4_num:
 # carry set: error
 
 get_h4:
-        call    get_byte
+        GET_CHAR
         and     $0x00FF, %ax
         cmp     $0x30, %ax
         jb      2f              # bail
@@ -146,7 +145,7 @@ print_dec16:
 1:
         mov     %dx, %ax
         add     $'0', %al
-        call    print_byte
+        PRINT_CHAR
         pop     %dx
         pop     %bx
         ret
@@ -163,7 +162,7 @@ print_str_loop:
         inc     %si
         and     $0x00FF, %ax
         jz      print_str_done
-        call    print_byte
+        PRINT_CHAR
         jmp     print_str_loop
 print_str_done: 
         pop     %si

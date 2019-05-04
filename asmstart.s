@@ -27,6 +27,8 @@
 ##################################################
 .section .text
 
+.include    "macros.inc"
+
 _start:
         cli                             # mask all interrupts
         cld                             # direction reg
@@ -216,7 +218,7 @@ main_help:
         call    print_regs
 
 mainloop:
-        call    get_byte
+        GET_CHAR
 
         cmp     $'d', %al
         jnz     1f
@@ -274,6 +276,7 @@ main_help_text:
         .ascii   "     c : copy [<seg>:0000] to [ES:0000]\n"
         .ascii   "     s : burn [ES:0000] to ROM [E000:0000]\n"
         .ascii   "     g : execute at [ES:<start>]\n"
+        .ascii   "     t : SPI tx/rx\n"
         .asciz   "     d : dump [ES:<start>]\n\n"
 
 ##################################################
@@ -297,7 +300,7 @@ main_dump_loop:
         call    dump_mem_line
         loop    1b
 
-        call    get_byte
+        GET_CHAR
         cmp     $'\n', %al
         jz      main_dump_loop
         cmp     $'\r', %al
@@ -319,8 +322,7 @@ main_recv:
         call    led_on
         mov     $0x0000, %di
 main_recv_loop:
-        call    get_byte
-        movb    %al, %es:(%di)
+        GET_CHAR %es:(%di)
         inc     %di
         jnz     main_recv_loop
         call    led_off
@@ -332,28 +334,29 @@ text_main_recv:
 ##################################################
 
 main_eseg_chg:
-        movb    $'>', %al
-        call    print_byte
+        PRINT_CHAR $'>'
         call    get_h16
         jc      1f
         movw    %ax, %es
 1:
         ret
 
-
 ##################################################
 
 main_spi_send:
-        movb    $0x55, %al
+        PRINT_CHAR $'>'
+        call    get_h8
+        jc      1f
         call    spi_transfer
+        call    print_h8
+1:
         ret
 ##################################################
 
 main_flash:
         call    check_flash_cs
         jnz     1f
-        movb    $'\n', %al
-        call    print_byte
+        PRINT_CHAR $'\n'
 
         call    erase_seg
         jc      1f
@@ -367,8 +370,7 @@ main_flash:
 ##################################################
 
 main_cpy:
-        movb    $'>', %al
-        call    print_byte
+        PRINT_CHAR $'>'
         call    get_h16
         jc      1f
 
@@ -396,13 +398,11 @@ main_jmp:
         push    %ax
         mov     %es, %ax
         call    print_h16
-        movb    $':', %al
-        call    print_byte
+        PRINT_CHAR $':'
         pop     %ax
         push    %ax
         call    print_h16
-        movb    $'\n', %al
-        call    print_byte
+        PRINT_CHAR $'\n'
         lret
 1:
         pop     %ax
@@ -410,20 +410,6 @@ main_jmp:
 
 text_jmp_start:
         .asciz  "\nstart>"
-
-##################################################
-# al: data byte
-print_byte:
-        movb    $0x0E, %ah
-        int     $0x10
-        ret
-
-##################################################
-# al: return data byte
-get_byte:
-        movb    $0x00, %ah
-        int     $0x16
-        ret
 
 ##################################################
 
@@ -435,25 +421,21 @@ print_banner:
         call    print_str_cs
         movw    $text_romdate, %si
         call    print_str_cs
-        movb    $'\n', %al
-        call    print_byte
+        PRINT_CHAR $'\n'
 
         movw    $text_cpu, %si          # CPU type
         call    print_str_cs
         call    cpu_id
         mov     %ax, %si
         call    print_str_cs
-        movb    $'\n', %al
-        call    print_byte
+        PRINT_CHAR $'\n'
 
         movw    $text_maxram, %si       # max RAM
         call    print_str_cs
         int     $0x12                   # get the value 
         call    print_dec16
-        movb    $'k', %al
-        call    print_byte
-        movb    $'\n', %al
-        call    print_byte
+        PRINT_CHAR $'k'
+        PRINT_CHAR $'\n'
 
         ret
 
@@ -471,12 +453,12 @@ text_maxram:
 
 ##################################################
 
+.include    "int.inc"
 .include    "uart.inc"
 .include    "string.inc"
 .include    "led.inc"
 .include    "spi.inc"
 .include    "cpu.inc"
-.include    "int.inc"
 .include    "misc.inc"
 .include    "flash.inc"
 

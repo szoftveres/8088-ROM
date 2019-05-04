@@ -216,13 +216,11 @@ erase_seg:
 erase_seg_loop:
         call    erase_sector
         jc      1f
-        movb    $'-', %al
-        call    print_byte
+        PRINT_CHAR $'-'
         add     $FLASH_SECT_SIZE, %di
         jnz     erase_seg_loop
 
-        movb    $'\n', %al
-        call    print_byte
+        PRINT_CHAR $'\n'
 
         clc
 1:
@@ -249,14 +247,12 @@ byte_program_seg_loop:
         dec     %dx
         jnz     2f
         movw    $FLASH_SECT_SIZE, %dx   # cycle counter
-        movb    $'#', %al
-        call    print_byte
+        PRINT_CHAR $'#'
 2:
         or      %di, %di                # di is auto-incremented
         jnz     byte_program_seg_loop
 
-        movb    $'\n', %al
-        call    print_byte
+        PRINT_CHAR $'\n'
 
         clc
 1:
@@ -283,14 +279,12 @@ verify_seg_loop:
         dec     %dx
         jnz     2f
         movw    $FLASH_SECT_SIZE, %dx   # cycle counter
-        movb    $'=', %al
-        call    print_byte
+        PRINT_CHAR $'='
 2:
         inc     %di
         jnz     verify_seg_loop
 
-        movb    $'\n', %al
-        call    print_byte
+        PRINT_CHAR $'\n'
 
         clc
 1:

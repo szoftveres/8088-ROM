@@ -26,7 +26,7 @@ uart_init:
         movb    $0xC7, %al              # FIFO enable, clear, 14 byte trigger
         outb    %al, $UART_BASE+2       # FCR
 #        movb    $0x03, %al              # enable tx and rx interrupts
-        movb    $0x01, %al              # rx interrupts
+        movb    $0x01, %al              # enable rx interrupts
         outb    %al, $UART_BASE+1       # IER
 
         xor     %ax, %ax
@@ -42,6 +42,7 @@ int_uart:
         push    %ax
         push    %si
 1:
+#        inb     $UART_BASE+2, %al       # Read IIR, this deletes Tx interrupt
         inb     $UART_BASE+5, %al       # LSR
         and     $0x0001, %ax            # byte received?
         jz      2f
@@ -65,10 +66,13 @@ int_uart:
 
 uart_send_byte:
         push    %ax;
-uart_send_poll:
+1:
         inb     $UART_BASE+5, %al       # LSR
         and     $0x0020, %ax
-        jz      uart_send_poll
+        jnz     2f
+#        HALT_WAIT                       # halt for interrupt 
+        jmp     1b
+2:
         pop     %ax
         outb    %al, $UART_BASE+0
         ret
@@ -82,9 +86,7 @@ uart_receive_byte:
         mov     uart_rcvbuf_rd, %si
         cmp     uart_rcvbuf_wr, %si
         jnz     2f
-
-        call    wait
-
+        HALT_WAIT                       # halt for interrupt
         jmp     1b
 2:
         inc     %si

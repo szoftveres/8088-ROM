@@ -28,60 +28,61 @@
 
 ##################################################
 # CS must be asserted separately
-# al: data
+# al: data in- and out
+
+.macro  SPI_BIT_TRANSFER
+        movb    %bl, %bh
+        andb    $MOSI_BIT, %bh          # prepare the bit in bh
+        andb    $NMOSI_BIT, %al         # zero out first
+        orb     %bh, %al                # then set if needed
+        outb    %al, (%dx)              # MSB out
+        xor     %di, %ax                # Clock flip
+        outb    %al, (%dx)
+        nop                             # small gap for the card
+        inb     (%dx), %al              # MSB in
+        movb    %al, %ch
+        andb    $MISO_BIT, %ch
+        orb     %ch, %cl                # set bit in out data
+        xor     %di, %ax                # Clock flip
+        outb    %al, (%dx)
+        rol     $1, %bl                 # Rotate data
+        rol     $1, %cl
+.endm
+
 
 spi_transfer:
         push    %bx
         push    %cx
-        push    %ax
+        push    %dx
+        push    %di
 
-        mov     $0x08, %cx              # cycle counter
+        mov     $CLK_BIT, %di           # Clock flip
+        mov     $IO_BASE, %dx           # IO address
 
-spi_transfer_loop:
+        movb    $0x00, %cl              # zero out 'in' data
 
-# --- MSB out
-        pop     %ax
-        mov     %ax, %bx
-        push    %ax
-        inb     $IO_BASE, %al
-        and     $0x80, %bl              # MSB
-        jz      1f
-        or      $MOSI_BIT, %al
-        jmp     2f
-1:
-        and     $NMOSI_BIT, %al
-2:
-        outb    %al, $IO_BASE
+        rol     $1, %al                 # bring MSB to bit
+        rol     $1, %al                 # pos. 1
+        movb    %al, %bl                # prepare 'out' data in bl
 
-# --- clock flip
-        inb     $IO_BASE, %al
-        xor     $CLK_BIT, %ax
-        outb    %al, $IO_BASE
+        inb     (%dx), %al
+        SPI_BIT_TRANSFER                # unrolled loop 8x
+        SPI_BIT_TRANSFER
+        SPI_BIT_TRANSFER
+        SPI_BIT_TRANSFER
+        SPI_BIT_TRANSFER
+        SPI_BIT_TRANSFER
+        SPI_BIT_TRANSFER
+        SPI_BIT_TRANSFER
 
-# --- MSB in and rotate
+        movb    %cl, %al
 
-        inb     $IO_BASE, %al
-        movb    %al, %bl
-        pop     %ax
-        and     $MISO_BIT, %bl
-        jz      1f
-        or      $0x80, %al              # MSB
-        jmp     2f
-1:
-        and     $0x7F, %al              # MSB
-2:
-        rol     $1, %al                 # MSB first
-        push    %ax
+        rol     $1, %al                 # bring MSB to bit
+        rol     $1, %al                 # pos. 7
+        rol     $1, %al
 
-# --- clock flip
-        inb     $IO_BASE, %al
-        xor     $CLK_BIT, %ax
-        outb    %al, $IO_BASE
-
-# --- cycle counter
-        loop     spi_transfer_loop
-
-        pop     %ax
+        pop     %di
+        pop     %dx
         pop     %cx
         pop     %bx
         ret
@@ -118,4 +119,6 @@ spi_deassert:
         outb    %al, $IO_BASE
         pop     %ax
         ret
+
+##################################################
 
