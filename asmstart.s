@@ -4,7 +4,6 @@
 .global main
 .global _start
 
-.equ    ESEG,       0x4000
 .equ    ROMSEG,     0xE000      # First ROM address
 
 .equ    UART_BASE,  0x0020
@@ -186,9 +185,9 @@ skip_ram_checks:
         mov     %ax, %ds
         mov     $SSEG, %ax
         mov     %ax, %ss
-        mov     $ESEG, %ax
-        mov     %ax, %es
         mov     $STACKP,%sp
+        push    %cs
+        pop     %es
 
 ##################################################
 # init hardware and interrupt table

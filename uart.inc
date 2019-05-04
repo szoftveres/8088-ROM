@@ -44,7 +44,7 @@ int_uart:
 1:
 #        inb     $UART_BASE+2, %al       # Read IIR, this deletes Tx interrupt
         inb     $UART_BASE+5, %al       # LSR
-        and     $0x0001, %ax            # byte received?
+        andb    $0x01, %al              # byte received?
         jz      2f
 
         mov     uart_rcvbuf_wr, %si
