@@ -126,7 +126,8 @@ int_12h:
 int_10h:
         cmp     $0x0E, %ah      # AH = 0x0E
         jnz     1f
-        jmp     int_10_0E
+        call    uart_send_byte
+        iret
 1:
         jmp     int_dummy
 
@@ -136,27 +137,10 @@ int_10h:
 int_16h:
         or      %ah, %ah        # AH = 0x00
         jnz     1f
-        jmp     int_16_00
+        call    uart_receive_byte
+        iret
 1:
         jmp     int_dummy
-
-##################################################
-# character input
-# al : result
-
-int_16_00:
-        call    uart_receive_byte
-        clc
-        iret
-
-##################################################
-# character output
-# al : byte
-
-int_10_0E:
-        call    uart_send_byte
-        clc
-        iret
 
 ##################################################
 

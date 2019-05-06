@@ -12,8 +12,8 @@ dump_mem_line:
         PRINT_CHAR $':'
         mov     %si, %ax
         call    print_h16
-        movw    $text_mdump_sep, %si
-        call    print_str_cs
+        PRINT_CHAR $' '
+        PRINT_CHAR $' '
 
         pop     %si
         push    %si
@@ -52,23 +52,6 @@ dump_mline_loop2_direct:
         pop     %cx
         pop     %ax
         ret
-
-text_mdump_sep:
-        .asciz "  "
-
-
-##################################################
-
-print_romid:
-        movw    $text_romid, %si
-        call    print_str_cs
-        call    get_rom_id
-        call    print_h16
-        PRINT_CHAR $'\n'
-        ret
-
-text_romid:
-        .asciz "ROM ID:"
 
 ##################################################
 

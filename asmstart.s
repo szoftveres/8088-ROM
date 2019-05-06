@@ -76,14 +76,13 @@ cpu_test_2:
         jz      cpu_ok
 
 cpu_fail:
-        mov     $0x02, %bx
+        movb    $0x02, %bl
         jmp     halt_blink
 cpu_ok:
 
 ##################################################
-# Skip all RAM checks when we're running from RAM
-# otherwise some checks would overwrite the program 
-# and stored data
+# Skip RAM checks when we're running from RAM
+# otherwise we would overwrite ourselves
 
         mov     %cs, %ax
         cmp     $ROMSEG, %ax
@@ -123,10 +122,10 @@ ram_ver2_loop:
 
         jmp     ram_ok
 ram_fail1:
-        mov     $0x03, %bx
-        jmp      halt_blink
+        movb    $0x03, %bl
+        jmp     halt_blink
 ram_fail2:
-        mov     $0x04, %bx
+        mov     $0x03, %bl
         jmp     halt_blink
 ram_ok:
 
@@ -181,6 +180,7 @@ skip_ram_checks:
 
 ##################################################
 # set up segment registers
+
         mov     $DSEG, %ax
         mov     %ax, %ds
         mov     $SSEG, %ax
@@ -202,11 +202,6 @@ skip_ram_checks:
 
         call    led_off
         call    print_banner
-
-        call    check_flash_cs
-        jnz     1f      
-        call    print_romid
-1:
 
 ##################################################
 
@@ -271,12 +266,13 @@ mainloop:
 main_help_text:
         .ascii "\n  [nl] : help\n"
         .ascii   "     e : set ES\n"
+        .ascii   "     d : memdump [ES:<start>]\n"
         .ascii   "     r : receive to [ES:0000]\n"
         .ascii   "     c : copy [<seg>:0000] to [ES:0000]\n"
         .ascii   "     s : burn [ES:0000] to ROM [E000:0000]\n"
         .ascii   "     g : execute at [ES:<start>]\n"
         .ascii   "     t : SPI tx/rx\n"
-        .asciz   "     d : dump [ES:<start>]\n\n"
+        .asciz   "\n"
 
 ##################################################
 
@@ -320,15 +316,23 @@ main_recv:
         call    print_str_cs
         call    led_on
         mov     $0x0000, %di
+        mov     $0x1000, %cx        # progress line
 main_recv_loop:
         GET_CHAR %es:(%di)
+        dec     %cx
+        jnz     1f
+        mov     $0x1000, %cx        # progress line
+        PRINT_CHAR $'#'
+1:
         inc     %di
         jnz     main_recv_loop
+        PRINT_CHAR $'\n'
         call    led_off
         ret
 
 text_main_recv:
-        .asciz  "\nreceiving..\n"
+        .ascii  "\nreceiving\n"
+        .asciz  "\________________\n"
 
 ##################################################
 
@@ -413,8 +417,10 @@ text_jmp_start:
 ##################################################
 
 print_banner:
+        PRINT_CHAR $'\n'
         movw    $text_banner, %si
         call    print_str_cs
+        PRINT_CHAR $'\n'
 
         movw    $text_rom, %si          # ROM date
         call    print_str_cs
@@ -438,10 +444,14 @@ print_banner:
 
         ret
 
+
+
 text_banner:
-        .ascii "\n\n *************\n"
-        .ascii     " * small x86 *\n"
-        .asciz     " *************\n\n"
+        .ascii "                          __   __              ______   ________\n"
+        .ascii "     ______ _____ _____  |  | |  |    ___  ___/  __  \\ /  _____/\n"
+        .ascii "    /  ___//     \\\\__  \\ |  | |  |    \\  \\/  /)      (/       \\ \n"
+        .ascii "    \\___ \\|  Y Y  \\/ __ \\|  |_|  |__   )    (/   --   \\   --   \\\n"
+        .asciz "   /______)__|_|__(______)____/____/  /__/\\__\\________/\\_______/\n"
 
 text_rom:
         .asciz  " ROM : "

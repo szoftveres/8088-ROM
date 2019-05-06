@@ -38,24 +38,42 @@ uart_init:
 ##################################################
 # UART interrupt service
 
-int_uart:
-        push    %ax
-        push    %si
-1:
-#        inb     $UART_BASE+2, %al       # Read IIR, this deletes Tx interrupt
+uart_rx_int:
         inb     $UART_BASE+5, %al       # LSR
         andb    $0x01, %al              # byte received?
-        jz      2f
-
+        jz      1f
         mov     uart_rcvbuf_wr, %si
         inc     %si
         and     $0x003F, %si            # 64
         mov     %si, uart_rcvbuf_wr
         inb     $UART_BASE+0, %al
         movb    %al, uart_rcvbuf(%si)
+        jmp     uart_rx_int
+1:
+        ret
 
-        jmp     1b
+
+int_uart:
+        push    %ax
+        push    %si
+        push    %ds
+        mov     $DSEG, %ax
+        mov     %ax, %ds
+1:
+        inb     $UART_BASE+2, %al       # Read IIR, this deletes Tx interrupt
+        andb    $0x0F, %al
+
+        cmpb    $0x04, %al              # FIFO trigger level
+        jnz     2f
+        call    uart_rx_int
+        jmp     1b                      # check for other pending interrupts
 2:
+        cmpb    $0x0C, %al              # Data in FIFO, timeout
+        jnz     2f
+        call    uart_rx_int
+        jmp     1b                      # check for other pending interrupts
+2:
+        pop     %ds
         pop     %si
         pop     %ax
         call    pic_eoi
@@ -65,7 +83,10 @@ int_uart:
 # al: data byte
 
 uart_send_byte:
+        push    %ds
         push    %ax;
+        mov     $DSEG, %ax
+        mov     %ax, %ds
 1:
         inb     $UART_BASE+5, %al       # LSR
         and     $0x0020, %ax
@@ -75,6 +96,8 @@ uart_send_byte:
 2:
         pop     %ax
         outb    %al, $UART_BASE+0
+        pop     %ds
+        clc
         ret
 
 ##################################################
@@ -82,6 +105,9 @@ uart_send_byte:
 
 uart_receive_byte:
         push    %si
+        push    %ds
+        mov     $DSEG, %si
+        mov     %si, %ds
 1:
         mov     uart_rcvbuf_rd, %si
         cmp     uart_rcvbuf_wr, %si
@@ -93,7 +119,10 @@ uart_receive_byte:
         and     $0x003F, %si            # 64
         mov     %si, uart_rcvbuf_rd
         movb    uart_rcvbuf(%si), %al
+
+        pop     %ds
         pop     %si
+        clc
         ret
 
 ##################################################

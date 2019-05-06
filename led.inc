@@ -4,44 +4,46 @@
 
 ##################################################
 # doesn't use neither data nor stack (RAM)
-# bx: number of blinks
+# bl: number of blinks
 
 halt_blink:
-        mov     %bx, %di
+        movb    %bl, %bh            # save the blink no. in %bh
 hb_forever:
-        mov     %di, %bx
+        movb    %bh, %bl
 hb_blinks:
-
-        mov     $0x3000, %cx
+        mov     $0x6000, %cx
 hb_off_loop:
         nop
-        dec     %cx
         nop
-        or      %cx,%cx
-        jnz     hb_off_loop
-        movb    $LED_BIT, %al
-        outb    %al, $IO_BASE
+        nop
+        nop
+        loop    hb_off_loop
 
-        mov     $0x2000, %cx
+        movb    $0xFF, %al
+        outb    %al, $IO_BASE
+        mov     $0x3000, %cx
 hb_on_loop:
         nop
-        dec     %cx
         nop
-        or      %cx,%cx
-        jnz     hb_on_loop
-        movb    $0x00, %al
+        nop
+        nop
+        loop    hb_on_loop
+
+        movb    $NLED_BIT, %al
         outb    %al, $IO_BASE
 
-        dec     %bx
+        dec     %bl
         jne     hb_blinks
 
-        mov     $0xE000, %cx
+        mov     $0xF000, %cx
 hb_break_loop:    
         nop
-        dec     %cx
+        nop
+        nop
+        nop
+        nop
         nop     
-        or      %cx,%cx
-        jnz     hb_break_loop
+        loop    hb_break_loop
 
         jmp     hb_forever
 
