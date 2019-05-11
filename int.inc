@@ -42,9 +42,9 @@ int_table:
         .word   int_dummy       # INT 02 - Non-maskable interrupt
         .word   int_dummy       # INT 03 - Debugger breakpoint
         .word   int_dummy       # INT 04 - Integer overlow (into)
-        .word   int_dummy       # INT 05
-        .word   int_dummy       # INT 06
-        .word   int_dummy       # INT 07
+        .word   int_bad         # INT 05
+        .word   int_bad         # INT 06
+        .word   int_bad         # INT 07
         .word   int_dummy       # INT 08 - IRQ0
         .word   int_dummy       # INT 09 - IRQ1
         .word   int_dummy       # INT 0A - IRQ2
@@ -54,21 +54,21 @@ int_table:
         .word   int_dummy       # INT 0E - IRQ6
         .word   int_uart        # INT 0F - IRQ7 - UART
         .word   int_10h         # INT 10 - character output
-        .word   int_dummy       # INT 11
+        .word   int_bad         # INT 11
         .word   int_12h         # INT 12 - return RAM size
-        .word   int_dummy       # INT 13
-        .word   int_dummy       # INT 14
-        .word   int_dummy       # INT 15
+        .word   int_bad         # INT 13
+        .word   int_bad         # INT 14
+        .word   int_bad         # INT 15
         .word   int_16h         # INT 16 - character input
-        .word   int_dummy       # INT 17
-        .word   int_dummy       # INT 18
-        .word   int_dummy       # INT 19
-        .word   int_dummy       # INT 1A
-        .word   int_dummy       # INT 1B
-        .word   int_dummy       # INT 1C
-        .word   int_dummy       # INT 1D
-        .word   int_dummy       # INT 1E
-        .word   int_dummy       # INT 1F
+        .word   int_bad         # INT 17
+        .word   int_bad         # INT 18
+        .word   int_bad         # INT 19
+        .word   int_bad         # INT 1A
+        .word   int_bad         # INT 1B
+        .word   int_bad         # INT 1C
+        .word   int_bad         # INT 1D
+        .word   int_bad         # INT 1E
+        .word   int_bad         # INT 1F
 
 ##################################################
 
@@ -98,9 +98,18 @@ pic_eoi:
         ret
 
 ##################################################
-# dummy handler
+# handler for external interrupts
+# does nothing
 
 int_dummy:
+        iret
+
+##################################################
+# handler for software interrupts
+# sets the C flag, indicating error
+
+int_bad:
+        stc
         iret
 
 ##################################################
@@ -129,7 +138,7 @@ int_10h:
         call    uart_send_byte
         iret
 1:
-        jmp     int_dummy
+        jmp     int_bad
 
 ##################################################
 # dispatch INT 16
@@ -140,7 +149,7 @@ int_16h:
         call    uart_receive_byte
         iret
 1:
-        jmp     int_dummy
+        jmp     int_bad
 
 ##################################################
 

@@ -22,8 +22,9 @@ sleep 1
 echo -n "r" >> /dev/ttyUSB0
 sleep 1
 ./sendp/sendp < ./rom.bin >> /dev/ttyUSB0
+# cat ./rom.bin >> /dev/ttyUSB0
 sleep 1
-echo -n "g0000" >> /dev/ttyUSB0
+echo -n "g" >> /dev/ttyUSB0
 
 # minicom
 

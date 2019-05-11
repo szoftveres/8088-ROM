@@ -209,7 +209,6 @@ main_help:
         movw    $main_help_text, %si
         call    print_str_cs
         call    print_seginfo
-        call    print_regs
 
 mainloop:
         GET_CHAR
@@ -259,6 +258,7 @@ mainloop:
 1:
         jmp     3f
 2:
+        call    print_regs
         jmp     main_help
 3:
         jmp     mainloop
@@ -270,7 +270,7 @@ main_help_text:
         .ascii   "     r : receive to [ES:0000]\n"
         .ascii   "     c : copy [<seg>:0000] to [ES:0000]\n"
         .ascii   "     s : burn [ES:0000] to ROM [E000:0000]\n"
-        .ascii   "     g : execute at [ES:<start>]\n"
+        .ascii   "     g : execute at [ES:0000]\n"
         .ascii   "     t : SPI tx/rx\n"
         .asciz   "\n"
 
@@ -391,28 +391,35 @@ main_cpy:
 ##################################################
 
 main_jmp:
+        PRINT_CHAR $'\n'
+
+        push    %ds                     # save regs
+        push    %es                     # save regs
 
         mov     %es, %ax
+        mov     %ax, %ds                # Set new %ds
+
+        push    %cs                     # return address
+        mov     $main_jmp_ret, %ax
         push    %ax
-        mov     $text_jmp_start, %si
+
+        mov     %es, %ax                # start address seg
+        push    %ax
+        mov     $0x0000, %ax
+        push    %ax                     # start address offset
+
+        lret
+main_jmp_ret:
+        pop     %es
+        pop     %ds
+        mov     $text_jmp_ret, %si
         call    print_str_cs
-        call    get_h16
-        jc      1f
-        push    %ax
-        mov     %es, %ax
-        call    print_h16
-        PRINT_CHAR $':'
-        pop     %ax
-        push    %ax
         call    print_h16
         PRINT_CHAR $'\n'
-        lret
-1:
-        pop     %ax
         ret
 
-text_jmp_start:
-        .asciz  "\nstart>"
+text_jmp_ret:
+        .asciz  "\n::"
 
 ##################################################
 

@@ -155,7 +155,7 @@ print_regs:
         ret
 
 text_AX:
-        .asciz "AX:"
+        .asciz "\nAX:"
 text_BX:
         .asciz " BX:"
 text_CX:
