@@ -197,6 +197,7 @@ skip_ram_checks:
         sti
         call    uart_init
         call    spi_init
+        call    sd_system_init
 
 ##################################################
 
@@ -248,6 +249,11 @@ mainloop:
         call    main_spi_send
         jmp     2f              # help
 1:
+        cmp     $'f', %al
+        jnz     1f
+        call    main_sd_read
+        jmp     2f              # help
+1:
         cmp     $'\n', %al
         jnz     1f
         jmp     2f              # help
@@ -272,6 +278,7 @@ main_help_text:
         .ascii   "     s : burn [ES:0000] to ROM [E000:0000]\n"
         .ascii   "     g : execute at [ES:0000]\n"
         .ascii   "     t : SPI tx/rx\n"
+        .ascii   "     f : read SDc 64k to [E000:0000]\n"
         .asciz   "\n"
 
 ##################################################
@@ -369,6 +376,24 @@ main_flash:
 1:
         ret
 
+##################################################
+
+main_sd_read:
+
+        movb    $0x00, %ah
+        int     $0x13
+
+        mov     $0x0000, %cx
+1:
+        mov     $0x0000, %dx
+        mov     %cx, %di
+        call    sd_read_block
+        jc      2f
+        add     $0x0200, %cx
+        jnz     1b
+2:
+        ret
+
 
 ##################################################
 
@@ -450,7 +475,6 @@ print_banner:
         PRINT_CHAR $'\n'
 
         ret
-
 
 
 text_banner:

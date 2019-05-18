@@ -56,7 +56,7 @@ int_table:
         .word   int_10h         # INT 10 - character output
         .word   int_bad         # INT 11
         .word   int_12h         # INT 12 - return RAM size
-        .word   int_bad         # INT 13
+        .word   int_13h         # INT 13 - SDcard ops
         .word   int_bad         # INT 14
         .word   int_bad         # INT 15
         .word   int_16h         # INT 16 - character input
@@ -152,4 +152,23 @@ int_16h:
         jmp     int_bad
 
 ##################################################
+# dispatch INT 13
+
+int_13h:
+        or      %ah, %ah        # AH = 0x00
+        jnz     1f
+        call    sd_init
+        iret
+1:
+        cmp     $0x01, %ah      # AH = 0x01
+        jnz     1f
+        movb    $0x00, %ah
+        iret
+1:
+
+        jmp     int_bad
+
+##################################################
+
+
 
