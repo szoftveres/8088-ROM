@@ -474,6 +474,7 @@ text_maxram:
 .include    "string.inc"
 .include    "led.inc"
 .include    "spi.inc"
+.include    "sd.inc"
 .include    "cpu.inc"
 .include    "misc.inc"
 .include    "flash.inc"
