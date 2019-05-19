@@ -17,6 +17,10 @@
 # First address above the interrupt table
 .equ    DSEG,               0x0040
 
+# Boot sector load address
+.equ    BOOTSEG,        0x0000
+.equ    BOOTADDR,       0x7C00
+
 ##################################################
 .section .bss
 
@@ -205,6 +209,12 @@ skip_ram_checks:
         call    print_banner
 
 ##################################################
+# detect SD card 
+
+        movb    $0x00, %ah
+        int     $0x13
+
+##################################################
 
 main_help:
         movw    $main_help_text, %si
@@ -249,7 +259,7 @@ mainloop:
         call    main_spi_send
         jmp     2f              # help
 1:
-        cmp     $'f', %al
+        cmp     $'b', %al
         jnz     1f
         call    main_sd_read
         jmp     2f              # help
@@ -278,7 +288,7 @@ main_help_text:
         .ascii   "     s : burn [ES:0000] to ROM [E000:0000]\n"
         .ascii   "     g : execute at [ES:0000]\n"
         .ascii   "     t : SPI tx/rx\n"
-        .ascii   "     f : read SDc 64k to [E000:0000]\n"
+        .ascii   "     b : read MBR to [0000:7C00]\n"
         .asciz   "\n"
 
 ##################################################
@@ -380,20 +390,17 @@ main_flash:
 
 main_sd_read:
 
-        movb    $0x00, %ah
-        int     $0x13
+        push    %es
+        mov     $BOOTSEG, %ax
+        mov     %ax, %es
+        mov     $BOOTADDR, %di
 
-        mov     $0x0000, %cx
-1:
+        mov     $0x7A00, %cx
         mov     $0x0000, %dx
-        mov     %cx, %di
         call    sd_read_block
-        jc      2f
-        add     $0x0200, %cx
-        jnz     1b
-2:
-        ret
 
+        pop     %es
+        ret
 
 ##################################################
 

@@ -1,7 +1,9 @@
 
-.equ    SDCMD_IDLE,        0
-.equ    SDCMD_INIT,        1
-.equ    SDCMD_READBLOCK,   17
+.equ    SDCMD_IDLE,        0    # R1(0x01)
+.equ    SDCMD_INIT,        1    # R1(0x00)
+.equ    SDCMD_CSD_READ,    9    # R1(0x00) + [0xFE + 32bytes + CRC16]
+.equ    SDCMD_CID_READ,    10   # R1(0x00) + [0xFE + 32bytes + CRC16]
+.equ    SDCMD_READBLOCK,   17   # R1(0x00) + [0xFE + 512bytes + CRC16]
 .equ    SDCMD_WRITEBLOCK,  24
 
 # BIT 5
@@ -12,6 +14,36 @@
 
 .local sdcard_alive
 .comm sdcard_alive, 1, 2
+
+.local sdcard_blocks_lo                 # number of total blocks
+.comm sdcard_blocks_lo, 2, 2
+.local sdcard_blocks_hi
+.comm sdcard_blocks_hi, 2, 2
+
+.local sdcard_block_to_byte             # rotate cycles
+.comm sdcard_block_to_byte, 1, 2
+
+##################################################
+# Partition table, 16 bytes
+
+.local partition_status
+.comm partition_status, 1, 1
+.local partition_hstart
+.comm partition_hstart, 1, 1
+.local partition_csstart
+.comm partition_csstart, 2, 1
+.local partition_type
+.comm partition_type, 1, 1
+.local partition_hend
+.comm partition_hend, 1, 1
+.local partition_csend
+.comm partition_csend, 2, 1
+.local partition_first_sect_lba
+.comm partition_first_sect_lba, 4, 1
+.local partition_total_sects
+.comm partition_total_sects, 4, 1
+
+##################################################
 
 .section .text
 ##################################################
@@ -127,7 +159,59 @@ sd_command:
         pop     %bx
         ret
 
+
 ##################################################
+# es:(di)     buffer
+# cx: bytes to read (not including 2 bytes of CRC)
+# carry: error
+
+sd_read_data:
+        push    %ax
+        push    %bx
+        push    %di
+        push    %cx
+
+        mov     $0x0100, %cx        # Waiting for the data token, 256 cycles
+1:        
+        movb    $0xFF, %al
+        call    spi_transfer
+        cmpb    $0xFE, %al
+        jz      2f                  # Data token received, GO!
+        movb    %al, %bl
+        andb    $0xE0, %bl
+        stc
+        jz      9f                  # Error token received, bail
+        call    sd_delay
+        loop    1b
+2:        
+        pop     %cx
+        push    %cx                 # number of bytes into %cx
+3:
+        movb    $0xFF, %al
+        call    spi_transfer
+        movb    %al, %es:(%di)
+        inc     %di
+        loop    3b
+
+        movb    $0xFF, %al
+        call    spi_transfer        # CRC byte 1
+        movb    $0xFF, %al
+        call    spi_transfer        # CRC byte 2
+
+        call    sd_delay
+        clc
+9:
+        call    sd_mark_state
+        pop     %cx
+        pop     %di
+        pop     %bx
+        pop     %ax
+        ret
+
+
+##################################################
+# huge function: initializes the card and gets its size
+# uses 0000:7C00 as a buffer
 # carry: error
 
 sd_init:
@@ -135,15 +219,20 @@ sd_init:
         push    %cx
         push    %dx
         push    %ds
+        push    %es
+        push    %di
+
+        mov     $BOOTSEG, %ax
+        mov     %ax, %es
+        mov     $BOOTADDR, %di
         mov     $DSEG, %ax
         mov     %ax, %ds
-
 
         movb    $0x55, %al
         movb    %al, sdcard_alive   # first mark the card as alive
 
         call    sd_hwdet
-        jc      4f                  # card not present, skip init
+        jc      5f                  # card not present, skip init
 
 # --- send IDLE command 
         call    sd_dummy_clocks
@@ -151,6 +240,7 @@ sd_init:
 1:
         push    %cx
         call    spi_assert
+        call    sd_delay
         xor     %cx, %cx
         xor     %dx, %dx
         movb    $SDCMD_IDLE, %al
@@ -163,14 +253,15 @@ sd_init:
         call    sd_delay
         stc
         loop    1b
-        jmp     4f                  # bail on error
+        jmp     5f                  # bail on error
 2:
 # --- send init command
         call    sd_dummy_clocks
-        mov     $0x1000, %cx        # 512 retries
+        mov     $0x1000, %cx        # many retries, this can take a long time
 3:
         push    %cx
         call    spi_assert
+        call    sd_delay
         xor     %cx, %cx
         xor     %dx, %dx
         movb    $SDCMD_INIT, %al
@@ -183,14 +274,68 @@ sd_init:
         call    sd_delay
         stc
         loop    3b
-
 4:
+# --- get card parameters
+        call    spi_assert
+        call    sd_delay
+        xor     %cx, %cx
+        xor     %dx, %dx
+        movb    $SDCMD_CSD_READ, %al
+        call    sd_command
+        orb     %al, %al
+        stc
+        jnz     5f                  # bail if response is not OK (0x00)
+# --- read data
+        call    sd_delay
+        mov     $BOOTSEG, %cx
+        mov     %cx, %es
+        mov     $0x0010, %cx        # 16 bytes
+        call    sd_read_data
+# --- extract C_SIZE
+        movb    %es:0x06(%di), %ah
+        andb    $0x03, %ah          # lowest 2 bits
+        movb    %es:0x08(%di), %al
+        andb    $0xC0, %al          # highest 2 bits
+        orb     %al, %ah
+        movb    %es:0x07(%di), %al
+        rol     $1, %ax
+        rol     $1, %ax
+        mov     %ax, sdcard_blocks_lo
+# --- extract READ_BL_LEN
+        movb    %es:0x05(%di), %cl
+        andb    $0x0F, %cl          # lowest 4 bits
+        movb    %cl, sdcard_block_to_byte
+# --- extract C_SIZE_MULT
+        movb    %es:0x09(%di), %al
+        andb    $0x03, %al          # lowest 2 bits
+        movb    %es:0x0A(%di), %ah
+        andb    $0x80, %ah          # highest 1 bit
+        rol     $1, %ax
+        inc     %al
+        inc     %al
+# --- calculate card size
+        movb    %al, %cl
+        mov     $0x0001, %ax
+        shl     %cl, %ax
+        mov     %ax, %cx
+        mov     sdcard_blocks_lo, %ax
+        inc     %ax                 # ((size + 1)* mult * bytes)
+        mul     %cx
+        mov     %ax, sdcard_blocks_lo
+        mov     %dx, sdcard_blocks_hi
+
+        clc
+5:
         call    sd_mark_state
+        call    spi_deassert
+        pop     %di
+        pop     %es
         pop     %ds
         pop     %dx
         pop     %cx
         pop     %ax
         ret
+
 
 ##################################################
 # cx: block num lo
@@ -199,62 +344,29 @@ sd_init:
 # carry: error
 
 sd_read_block:
-
         push    %ax
-        push    %bx
         push    %cx
         push    %dx
-
-#        call    sd_check_state      # check and bring up the card if necessary
-#        jnc     1f
-#        call    sd_init
-#        jc      9f
-1:
         call    spi_assert
         call    sd_delay
-
         movb    $SDCMD_READBLOCK, %al
         call    sd_command
         orb     %al, %al
         stc
-        jnz     9f                  # 0x00 response, OK
-
-        mov     $0x0100, %cx        # Waiting for the data token, 256 cycles
-2:        
-        movb    $0xFF, %al
-        call    spi_transfer
-        cmpb    $0xFE, %al          # Data token received, GO!
-        jz      3f
-        movb    %al, %bl
-        andb    $0xEF, %bl
-        stc
-        jz      9f                  # Error token received, bail
-        call    sd_delay
-        loop    2b
-3:        
-
-        mov     $0x0200, %cx        # Reading 512 bytes (a block)
-4:
-        movb    $0xFF, %al
-        call    spi_transfer
-        movb    %al, %es:(%di)
-        inc     %di
-        loop    4b
-
-        movb    $0xFF, %al
-        call    spi_transfer        # CRC byte 1
-        movb    $0xFF, %al
-        call    spi_transfer        # CRC byte 2
-
-        call    sd_delay
-        clc
-9:
+        jnz     1f                  # 0x00 response, OK
+        movb    sdcard_block_to_byte, %cl
+        mov     $0x0001, %ax
+        shl     %cl, %ax
+        mov     %ax, %cx
+        call    sd_read_data
+1:
         call    sd_mark_state
         call    spi_deassert
         pop     %dx
         pop     %cx
-        pop     %bx
         pop     %ax
         ret
 
+
+##################################################
 

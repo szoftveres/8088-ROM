@@ -17,7 +17,6 @@ echo "ES : ${newseg}"
 
 echo -n "e" >> /dev/ttyUSB0
 echo -n "${newseg}" >> /dev/ttyUSB0
-sleep 1
 
 echo -n "r" >> /dev/ttyUSB0
 sleep 1
