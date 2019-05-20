@@ -101,6 +101,32 @@ uart_send_byte:
         ret
 
 ##################################################
+# zero: 0 if byte available
+# zero: 1 if byte not available
+# al: byte (ax=0 if none)
+
+uart_byte_available:
+        push    %si
+        push    %ds
+        mov     $DSEG, %si
+        mov     %si, %ds
+        mov     uart_rcvbuf_rd, %si
+        cmp     uart_rcvbuf_wr, %si
+        jnz     1f                      # byte available
+        xor     %ax, %ax                # this sets the zero flag as well
+        jmp     2f
+1:
+        inc     %si
+        and     $0x003F, %si            # 64
+        movb    uart_rcvbuf(%si), %al
+        orb     %al, %al                # (hopefully) clear zero flag
+2:
+        pop     %ds
+        pop     %si
+        clc
+        ret
+
+##################################################
 # al: return data byte
 
 uart_receive_byte:

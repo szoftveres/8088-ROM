@@ -57,7 +57,7 @@ int_table:
         .word   int_10h         # INT 10 - character output
         .word   int_bad         # INT 11
         .word   int_12h         # INT 12 - return RAM size
-        .word   int_13h         # INT 13 - SDcard ops
+        .word   int_13h         # INT 13 - disk ops
         .word   int_bad         # INT 14
         .word   int_bad         # INT 15
         .word   int_16h         # INT 16 - character input
@@ -70,6 +70,13 @@ int_table:
         .word   int_bad         # INT 1D
         .word   int_bad         # INT 1E
         .word   int_bad         # INT 1F
+
+int_dummy:
+        iret
+
+int_bad:
+        stc
+        iret
 
 ##################################################
 
@@ -99,19 +106,50 @@ pic_eoi:
         ret
 
 ##################################################
-# handler for external interrupts
-# does nothing
+# dummy handlers
 
-int_dummy:
-        iret
+int_success:
+        clc                     # Happy
+        movb    $0x00, %al
+        ret
+
+int_fail:
+        stc                     # Sad
+        ret
 
 ##################################################
-# handler for software interrupts
-# sets the C flag, indicating error
 
-int_bad:
-        stc
+# dispatch INT 10
+
+int_10h:
+        push    %di
+        push    %ax
+        mov     %ah, %al
+        shl     $1, %ax
+        xorb    %ah, %ah
+        movw    %ax, %di
+        pop     %ax
+        call    *%cs:int_10_dispatch(%di)
+        pop     %di
         iret
+
+int_10_dispatch:
+        .word   int_success     # 0x00
+        .word   int_success     # 0x01
+        .word   int_success     # 0x02
+        .word   int_success     # 0x03
+        .word   int_success     # 0x04
+        .word   int_success     # 0x05
+        .word   int_success     # 0x06
+        .word   int_success     # 0x07
+        .word   int_success     # 0x08
+        .word   int_success     # 0x09
+        .word   int_success     # 0x0A
+        .word   int_success     # 0x0B
+        .word   int_success     # 0x0C
+        .word   int_success     # 0x0D
+        .word   uart_send_byte  # 0x0E
+        .word   int_success     # 0x0F
 
 ##################################################
 # INT 12H handler - return RAM size
@@ -131,44 +169,55 @@ int_12h:
 
 ##################################################
 
-# dispatch INT 10
-
-int_10h:
-        cmp     $0x0E, %ah      # AH = 0x0E
-        jnz     1f
-        call    uart_send_byte
-        iret
-1:
-        jmp     int_bad
-
-##################################################
-# dispatch INT 16
-
-int_16h:
-        or      %ah, %ah        # AH = 0x00
-        jnz     1f
-        call    uart_receive_byte
-        iret
-1:
-        jmp     int_bad
-
-##################################################
 # dispatch INT 13
 
 int_13h:
-        or      %ah, %ah        # AH = 0x00
-        jnz     1f
-        clc                     # reset disk
+        push    %di
+        push    %ax
+        mov     %ah, %al
+        shl     $1, %ax
+        xorb    %ah, %ah
+        movw    %ax, %di
+        pop     %ax
+        call    *%cs:int_13_dispatch(%di)
+        pop     %di
         iret
-1:
-        cmp     $0x01, %ah      # AH = 0x01
-        jnz     1f
-        movb    $0x00, %ah      # get last op status
-        clc
-        iret
-1:
 
-        jmp     int_bad
+int_13_dispatch:
+        .word   int_success             # 0x00
+        .word   int_success             # 0x01
+        .word   int_success             # 0x02
+        .word   int_success             # 0x03
+        .word   int_success             # 0x04
+        .word   int_success             # 0x05
+        .word   int_success             # 0x06
+        .word   int_success             # 0x07
+
+##################################################
+
+# dispatch INT 16
+
+int_16h:
+        push    %di
+        push    %ax
+        mov     %ah, %al
+        shl     $1, %ax
+        xorb    %ah, %ah
+        movw    %ax, %di
+        pop     %ax
+        call    *%cs:int_16_dispatch(%di)
+        pop     %di
+        iret
+
+int_16_dispatch:
+        .word   uart_receive_byte       # 0x00
+        .word   uart_byte_available     # 0x01
+        .word   int_success             # 0x02
+        .word   int_success             # 0x03
+        .word   int_success             # 0x04
+        .word   int_success             # 0x05
+        .word   int_success             # 0x06
+        .word   int_success             # 0x07
 
 ##################################################
 
