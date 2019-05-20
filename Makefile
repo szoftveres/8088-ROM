@@ -15,8 +15,6 @@ LDFLAGS = -march=i8086 -mtune=i8086 -T ls.ld -L/home/martonk/mgc/embedded/codebe
 ## Objects that must be built in order to link
 ## XXX The order is important, asmstart MUST be the first one !!
 OBJECTS = $(OBJDIR)/asmstart.o      \
-#          $(OBJDIR)/main.o          \
-#          $(OBJDIR)/fat.o           \
 
 
 ## Build both compiler and program

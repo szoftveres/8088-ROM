@@ -249,11 +249,6 @@ mainloop:
         call    main_flash
         jmp     2f              # help
 1:
-        cmp     $'t', %al
-        jnz     1f
-        call    main_spi_send
-        jmp     2f              # help
-1:
         cmp     $'b', %al
         jnz     1f
         call    main_boot
@@ -282,7 +277,6 @@ main_help_text:
         .ascii   "     c : copy [<seg>:0000] to [ES:0000]\n"
         .ascii   "     s : burn [ES:0000] to ROM [E000:0000]\n"
         .ascii   "     g : execute at [ES:0000]\n"
-        .ascii   "     t : SPI tx/rx\n"
         .ascii   "     b : boot [0000:7C00]\n"
         .asciz   "\n"
 
@@ -356,16 +350,6 @@ main_eseg_chg:
 1:
         ret
 
-##################################################
-
-main_spi_send:
-        PRINT_CHAR $'>'
-        call    get_h8
-        jc      1f
-        call    spi_transfer
-        call    print_h8
-1:
-        ret
 ##################################################
 
 main_flash:
