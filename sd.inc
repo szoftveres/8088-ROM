@@ -21,7 +21,7 @@
 .comm sdcard_blocks_hi, 2, 2
 
 .local sdcard_block_to_byte             # rotate cycles
-.comm sdcard_block_to_byte, 1, 2
+.comm sdcard_block_to_byte, 2, 2
 
 ##################################################
 # Partition table, 16 bytes
@@ -38,10 +38,14 @@
 .comm partition_hend, 1, 1
 .local partition_csend
 .comm partition_csend, 2, 1
-.local partition_first_sect_lba
-.comm partition_first_sect_lba, 4, 1
-.local partition_total_sects
-.comm partition_total_sects, 4, 1
+.local partition_first_sect_lba_lo
+.comm partition_first_sect_lba_lo, 2, 1
+.local partition_first_sect_lba_hi
+.comm partition_first_sect_lba_hi, 2, 1
+.local partition_total_sects_lo
+.comm partition_total_sects_lo, 2, 1
+.local partition_total_sects_hi
+.comm partition_total_sects_hi, 2, 1
 
 ##################################################
 
@@ -232,7 +236,7 @@ sd_init:
         movb    %al, sdcard_alive   # first mark the card as alive
 
         call    sd_hwdet
-        jc      5f                  # card not present, skip init
+        jc      9f                  # card not present, skip init
 
 # --- send IDLE command 
         call    sd_dummy_clocks
@@ -253,7 +257,7 @@ sd_init:
         call    sd_delay
         stc
         loop    1b
-        jmp     5f                  # bail on error
+        jmp     9f                  # bail on error
 2:
 # --- send init command
         call    sd_dummy_clocks
@@ -284,13 +288,16 @@ sd_init:
         call    sd_command
         orb     %al, %al
         stc
-        jnz     5f                  # bail if response is not OK (0x00)
+        jnz     9f                  # bail if response is not OK (0x00)
 # --- read data
         call    sd_delay
         mov     $BOOTSEG, %cx
         mov     %cx, %es
         mov     $0x0010, %cx        # 16 bytes
         call    sd_read_data
+        jc      9f
+        call    spi_deassert
+
 # --- extract C_SIZE
         movb    %es:0x06(%di), %ah
         andb    $0x03, %ah          # lowest 2 bits
@@ -304,7 +311,8 @@ sd_init:
 # --- extract READ_BL_LEN
         movb    %es:0x05(%di), %cl
         andb    $0x0F, %cl          # lowest 4 bits
-        movb    %cl, sdcard_block_to_byte
+        xor     %ch, %ch
+        movw    %cx, sdcard_block_to_byte
 # --- extract C_SIZE_MULT
         movb    %es:0x09(%di), %al
         andb    $0x03, %al          # lowest 2 bits
@@ -324,8 +332,34 @@ sd_init:
         mov     %ax, sdcard_blocks_lo
         mov     %dx, sdcard_blocks_hi
 
-        clc
+# --- load the MBR to 7C00
+        mov     $BOOTADDR, %di
+        mov     $0x0000, %cx
+        mov     $0x0000, %dx
+        call    sd_read_block
+        jc      9f
+
+        movw    $0x0010, %cx    # one partition entry, 16 bytes
+        movw    $(BOOTADDR + 446), %si    # 7C00 + 446 bytes
+        movw    $partition_status, %di
 5:
+        movb    %es:(%si), %al
+        movb    %al, %ds:(%di)
+        inc     %si
+        inc     %di
+        loop    5b
+
+# --- load the boot sector of the first partition to 7C00
+
+        mov     $BOOTADDR, %di
+        mov     partition_first_sect_lba_lo, %cx
+        mov     partition_first_sect_lba_hi, %dx
+
+        call    sd_read_block
+        jc      9f
+
+        clc
+9:
         call    sd_mark_state
         call    spi_deassert
         pop     %di
@@ -347,19 +381,29 @@ sd_read_block:
         push    %ax
         push    %cx
         push    %dx
+
+        movw    %cx, %ax
+        movw    sdcard_block_to_byte, %cx
+1:
+        shl     %ax                 # uppermost bit goes to carry
+        rcl     %dx                 # lowest bit comes from the carry
+        loop    1b
+
+        mov     %ax, %cx
+
         call    spi_assert
         call    sd_delay
         movb    $SDCMD_READBLOCK, %al
         call    sd_command
         orb     %al, %al
         stc
-        jnz     1f                  # 0x00 response, OK
-        movb    sdcard_block_to_byte, %cl
+        jnz     2f                  # 0x00 response, OK
+        movw    sdcard_block_to_byte, %cx
         mov     $0x0001, %ax
         shl     %cl, %ax
         mov     %ax, %cx
         call    sd_read_data
-1:
+2:
         call    sd_mark_state
         call    spi_deassert
         pop     %dx

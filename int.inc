@@ -24,6 +24,7 @@ int_init:
         mov     $int_table, %si
         mov     $0x20, %cx      # 32 Interrupt vectors
         mov     %cs, %ax
+        cld
 1:
         movsw                   # ISR address
         stosw                   # segments
@@ -157,12 +158,13 @@ int_16h:
 int_13h:
         or      %ah, %ah        # AH = 0x00
         jnz     1f
-        call    sd_init
+        clc                     # reset disk
         iret
 1:
         cmp     $0x01, %ah      # AH = 0x01
         jnz     1f
-        movb    $0x00, %ah
+        movb    $0x00, %ah      # get last op status
+        clc
         iret
 1:
 

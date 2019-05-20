@@ -202,17 +202,12 @@ skip_ram_checks:
         call    uart_init
         call    spi_init
         call    sd_system_init
+        call    sd_init
 
 ##################################################
 
         call    led_off
         call    print_banner
-
-##################################################
-# detect SD card 
-
-        movb    $0x00, %ah
-        int     $0x13
 
 ##################################################
 
@@ -261,7 +256,7 @@ mainloop:
 1:
         cmp     $'b', %al
         jnz     1f
-        call    main_sd_read
+        call    main_boot
         jmp     2f              # help
 1:
         cmp     $'\n', %al
@@ -288,7 +283,7 @@ main_help_text:
         .ascii   "     s : burn [ES:0000] to ROM [E000:0000]\n"
         .ascii   "     g : execute at [ES:0000]\n"
         .ascii   "     t : SPI tx/rx\n"
-        .ascii   "     b : read MBR to [0000:7C00]\n"
+        .ascii   "     b : boot [0000:7C00]\n"
         .asciz   "\n"
 
 ##################################################
@@ -388,19 +383,12 @@ main_flash:
 
 ##################################################
 
-main_sd_read:
+main_boot:
 
-        push    %es
         mov     $BOOTSEG, %ax
         mov     %ax, %es
-        mov     $BOOTADDR, %di
-
-        mov     $0x7A00, %cx
-        mov     $0x0000, %dx
-        call    sd_read_block
-
-        pop     %es
-        ret
+        mov     %ax, %ds
+        jmp     $BOOTSEG,$BOOTADDR
 
 ##################################################
 
