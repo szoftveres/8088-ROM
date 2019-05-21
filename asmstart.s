@@ -369,6 +369,18 @@ main_flash:
 
 main_boot:
 
+        call    ipl
+        jnc     1f
+        mov     %ax, %si
+        call    print_str_cs
+1:
+
+        mov     $0xBEEF, %ax
+        push    %ax
+        call    print_regs
+        pop     %ax
+
+        ret
         mov     $BOOTSEG, %ax
         mov     %ax, %es
         mov     %ax, %ds
@@ -448,7 +460,11 @@ print_banner:
 
         movw    $text_maxram, %si       # max RAM
         call    print_str_cs
+
+        movw    $0xA55A, %cx            # Int12 magic numbers
+        movw    $0x5AA5, %dx
         int     $0x12                   # get the value 
+
         call    print_dec16
         PRINT_CHAR $'k'
         PRINT_CHAR $'\n'
@@ -478,6 +494,7 @@ text_maxram:
 .include    "led.inc"
 .include    "spi.inc"
 .include    "sd.inc"
+.include    "disk.inc"
 .include    "cpu.inc"
 .include    "misc.inc"
 .include    "flash.inc"

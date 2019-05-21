@@ -23,31 +23,6 @@
 .local sdcard_block_to_byte             # rotate cycles
 .comm sdcard_block_to_byte, 2, 2
 
-##################################################
-# Partition table, 16 bytes
-
-.local partition_status
-.comm partition_status, 1, 1
-.local partition_hstart
-.comm partition_hstart, 1, 1
-.local partition_csstart
-.comm partition_csstart, 2, 1
-.local partition_type
-.comm partition_type, 1, 1
-.local partition_hend
-.comm partition_hend, 1, 1
-.local partition_csend
-.comm partition_csend, 2, 1
-.local partition_first_sect_lba_lo
-.comm partition_first_sect_lba_lo, 2, 1
-.local partition_first_sect_lba_hi
-.comm partition_first_sect_lba_hi, 2, 1
-.local partition_total_sects_lo
-.comm partition_total_sects_lo, 2, 1
-.local partition_total_sects_hi
-.comm partition_total_sects_hi, 2, 1
-
-##################################################
 
 .section .text
 ##################################################
@@ -236,7 +211,7 @@ sd_init:
         movb    %al, sdcard_alive   # first mark the card as alive
 
         call    sd_hwdet
-        jc      9f                  # card not present, skip init
+        jc      5f                  # card not present, skip init
 
 # --- send IDLE command 
         call    sd_dummy_clocks
@@ -255,9 +230,9 @@ sd_init:
         clc
         jz      2f                  # OK, continue
         call    sd_delay
-        stc
         loop    1b
-        jmp     9f                  # bail on error
+        stc
+        jmp     5f                  # bail on error
 2:
 # --- send init command
         call    sd_dummy_clocks
@@ -288,14 +263,14 @@ sd_init:
         call    sd_command
         orb     %al, %al
         stc
-        jnz     9f                  # bail if response is not OK (0x00)
+        jnz     5f                  # bail if response is not OK (0x00)
 # --- read data
         call    sd_delay
         mov     $BOOTSEG, %cx
         mov     %cx, %es
         mov     $0x0010, %cx        # 16 bytes
         call    sd_read_data
-        jc      9f
+        jc      5f
         call    spi_deassert
 
 # --- extract C_SIZE
@@ -332,34 +307,8 @@ sd_init:
         mov     %ax, sdcard_blocks_lo
         mov     %dx, sdcard_blocks_hi
 
-# --- load the MBR to 7C00
-        mov     $BOOTADDR, %di
-        mov     $0x0000, %cx
-        mov     $0x0000, %dx
-        call    sd_read_block
-        jc      9f
-
-        movw    $0x0010, %cx    # one partition entry, 16 bytes
-        movw    $(BOOTADDR + 446), %si    # 7C00 + 446 bytes
-        movw    $partition_status, %di
-5:
-        movb    %es:(%si), %al
-        movb    %al, %ds:(%di)
-        inc     %si
-        inc     %di
-        loop    5b
-
-# --- load the boot sector of the first partition to 7C00
-
-        mov     $BOOTADDR, %di
-        mov     partition_first_sect_lba_lo, %cx
-        mov     partition_first_sect_lba_hi, %dx
-
-        call    sd_read_block
-        jc      9f
-
         clc
-9:
+5:
         call    sd_mark_state
         call    spi_deassert
         pop     %di
@@ -369,7 +318,6 @@ sd_init:
         pop     %cx
         pop     %ax
         ret
-
 
 ##################################################
 # cx: block num lo

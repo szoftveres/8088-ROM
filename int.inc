@@ -1,5 +1,4 @@
 
-
 ##################################################
 
 .macro  HALT_WAIT
@@ -55,7 +54,7 @@ int_table:
         .word   int_dummy       # INT 0E - IRQ6
         .word   int_uart        # INT 0F - IRQ7 - UART
         .word   int_10h         # INT 10 - character output
-        .word   int_bad         # INT 11
+        .word   int_11h         # INT 11
         .word   int_12h         # INT 12 - return RAM size
         .word   int_13h         # INT 13 - disk ops
         .word   int_bad         # INT 14
@@ -117,11 +116,46 @@ int_fail:
         stc                     # Sad
         ret
 
-##################################################
+# interrupt number in stack
+int_debug:
+        call    print_regs
+        stc                     # Sad
+        movb    $0x00, %al
+        ret
 
-# dispatch INT 10
+##################################################
+# INT 10H handler - VIDEO services (character output)
 
 int_10h:
+        push    %bp
+        movw    $0x0013, %bp            # interrupt number
+        push    %bp
+        movw    $1f, %bp                # return address
+        push    %bp
+        push    %bp                     # space for the handler address
+        movw    %sp, %bp
+
+        push    %ax
+        mov     %ah, %al
+        shl     $1, %ax
+        xorb    %ah, %ah
+        movw    %cs:int_10_dispatch(%si), %ax
+        movw    %ax, %ss:0(%bp)
+        pop     %ax
+
+        ret                             # call the handler (address in stack)
+        nop
+        nop
+1:
+        nop
+        nop
+        pop     %bp                     # clean up int number
+        pop     %bp
+        iret
+
+
+
+
         push    %di
         push    %ax
         mov     %ah, %al
@@ -137,22 +171,52 @@ int_10_dispatch:
         .word   int_success     # 0x00
         .word   int_success     # 0x01
         .word   int_success     # 0x02
-        .word   int_success     # 0x03
+        .word   int_10_03       # 0x03
         .word   int_success     # 0x04
         .word   int_success     # 0x05
         .word   int_success     # 0x06
         .word   int_success     # 0x07
         .word   int_success     # 0x08
-        .word   int_success     # 0x09
-        .word   int_success     # 0x0A
+        .word   int_10_09       # 0x09
+        .word   int_10_0A       # 0x0A
         .word   int_success     # 0x0B
         .word   int_success     # 0x0C
         .word   int_success     # 0x0D
         .word   uart_send_byte  # 0x0E
         .word   int_success     # 0x0F
 
+int_10_03:
+        xor     %cx, %cx
+        xor     %dx, %dx
+        clc
+        ret
+
+int_10_09:
+int_10_0A:
+        push    %ax
+        push    %cx
+1:
+        pop     %ax
+        call    uart_send_byte
+        push    %ax
+        loop    1b
+        pop     %cx
+        pop     %ax
+        clc
+        ret
+
+##################################################
+# INT 11H handler - return equipment list
+# ax: result
+
+int_11h:
+        movw    $0x0001, %ax    # nobody gets jealous of this config for sure
+        clc
+        iret
+
 ##################################################
 # INT 12H handler - return RAM size
+# (cx == 0xA55A && dx == 0x5AA5) : real size, otherwise max 640k
 # ax: result
 
 int_12h:
@@ -162,6 +226,16 @@ int_12h:
         mov     %ax, %ds
         mov     $ramsize, %di
         mov     (%di), %ax      # get the value into ax
+        cmpw    $0xA55A, %cx    # check for magic numbers
+        jnz     1f
+        cmpw    $0x5AA5, %dx
+        jnz     1f
+        jmp     2f
+1:
+        cmpw    $640, %ax       # don't report more than 640k
+        jna     2f
+        movw    $640, %ax
+2:
         clc
         pop     %ds
         pop     %di
@@ -172,26 +246,37 @@ int_12h:
 # dispatch INT 13
 
 int_13h:
-        push    %di
+        push    %bp
+        movw    $0x0013, %bp            # interrupt number
+        push    %bp
+        movw    $1f, %bp                # return address
+        push    %bp
+        push    %bp                     # space for the handler address
+        movw    %sp, %bp
+
         push    %ax
         mov     %ah, %al
         shl     $1, %ax
         xorb    %ah, %ah
-        movw    %ax, %di
+        addw    $int_13_dispatch, %ax
+        movw    %ax, %ss:0(%bp)
         pop     %ax
-        call    *%cs:int_13_dispatch(%di)
-        pop     %di
+
+        ret                             # call the handler (address in stack)
+1:
+        pop     %bp                     # clean up int number
+        pop     %bp                     # clean up int number
         iret
 
 int_13_dispatch:
-        .word   int_success             # 0x00
-        .word   int_success             # 0x01
-        .word   int_success             # 0x02
-        .word   int_success             # 0x03
-        .word   int_success             # 0x04
-        .word   int_success             # 0x05
-        .word   int_success             # 0x06
-        .word   int_success             # 0x07
+        .word   int_debug               # 0x00
+        .word   int_debug               # 0x01
+        .word   int_debug               # 0x02
+        .word   int_debug               # 0x03
+        .word   int_debug               # 0x04
+        .word   int_debug               # 0x05
+        .word   int_debug               # 0x06
+        .word   int_debug               # 0x07
 
 ##################################################
 
