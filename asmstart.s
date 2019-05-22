@@ -203,6 +203,7 @@ skip_ram_checks:
         call    spi_init
         call    sd_system_init
         call    sd_init
+        call    disk_init
 
 ##################################################
 

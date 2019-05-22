@@ -46,6 +46,54 @@
 
 .section .text
 
+dpt_1440:
+    .byte   0xBF        # 0-3: head unload time, 4-7: step rate
+    .byte   0x02        # 0: non-DMA mode, 1-7: head load time
+    .byte   0x01        # motor timeout ticks
+    .byte   0x02        # sector size, 0x02 == 512b
+    .byte   0x12        # sectors per track (18, 0x12)
+    .byte   0x1B        # r/w gap length
+    .byte   0xFF        # special sectors (0xFF: N/A)
+    .byte   0x6C        # format gap length
+    .byte   0xFF        # fill byte
+    .byte   0x01        # head settle time
+    .byte   0x01        # motor start time
+    .byte   0x4F        # cylinders -1 (80-1) (0x50-0x1)
+    .byte   0x00        # 6-7: transfer rate
+
+##################################################
+
+disk_init:
+        push    %di
+        push    %es             # save ES
+
+        movw    $BOOTSEG, %di
+        movw    %di, %es
+        movw    $0x0078, %di    # int 0x1E vector, L
+        movw    $dpt_1440, %es:(%di)
+        movw    $0x007A, %di    # int 0x1E vector, H
+        movw    %cs, %es:(%di)
+
+        pop     %es             # restore ES
+        pop     %di
+        ret
+
+##################################################
+# cx: cylinder + sector
+# dh: head
+
+disk_chs_to_lba:
+
+        mov     %cx, %ax
+        and     $0x003F, %ax    # lowest 6 bits
+        dec     %ax             # sector - 1
+        push    %ax             # we have the sector
+        movb    %dh, %al
+        push    %ax
+
+        
+
+
 ##################################################
 # carry: error
 # ax: error message

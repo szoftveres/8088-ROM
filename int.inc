@@ -9,6 +9,15 @@
 .endm
 
 
+# flags
+# CS
+# IP <-
+# %bp
+# <optional: int number>
+# return address from handler
+# handler address
+# %ax
+
 
 .macro  INTERRUPT_DISPATCH      dispatch_table:req, num
         push    %bp
@@ -30,6 +39,19 @@
         pop     %ax
         ret                             # call the handler (address in stack)
 1:
+        push    %ax
+        pushf
+        pop     %ax
+        movw    %sp, %bp
+        andw    $0x0001, %ax            # carry set?
+        .ifnb   \num
+            andw    $0xFFFE, %ss:10(%bp)
+            orw     %ax, %ss:10(%bp)
+        .else
+            andw    $0xFFFE, %ss:8(%bp)
+            orw     %ax, %ss:8(%bp)
+        .endif
+        pop     %ax
         .ifnb   \num
             pop     %bp                     # clean up int number
         .endif
@@ -46,7 +68,7 @@ int_init:
 
         push    %cs
         pop     %ds
-        mov     $0x0000, %di
+        mov     $BOOTSEG, %di
         mov     %di, %es
         mov     $int_table, %si
         mov     $0x20, %cx      # 32 Interrupt vectors
@@ -88,9 +110,9 @@ int_table:
         .word   int_14h         # INT 14
         .word   int_15h         # INT 15
         .word   int_16h         # INT 16 - character input
-        .word   int_bad         # INT 17
-        .word   int_bad         # INT 18
-        .word   int_bad         # INT 19
+        .word   int_17h         # INT 17
+        .word   int_18h         # INT 18
+        .word   int_19h         # INT 19
         .word   int_bad         # INT 1A
         .word   int_bad         # INT 1B
         .word   int_bad         # INT 1C
@@ -102,7 +124,6 @@ int_dummy:
         iret
 
 int_bad:
-        stc
         iret
 
 ##################################################
@@ -136,16 +157,11 @@ pic_eoi:
 # dummy handlers
 
 int_success:
-        clc                     # Happy
-        movb    $0x00, %al
-        ret
-
-int_fail:
-        stc                     # Sad
+        clc                     # happy
         ret
 
 # interrupt number in stack
-int_debug:
+int_dbg:
         push    %si
         push    %bp
         push    %ax
@@ -160,8 +176,8 @@ int_debug:
         pop     %bp
         pop     %si
         call    print_regs
-        stc                     # Sad
         movb    $0x00, %al
+        stc                     # sad
         ret
 
 text_int_dbg1:
@@ -178,22 +194,22 @@ int_10h:
         iret
 
 int_10_dispatch:
-        .word   int_success     # 0x00
-        .word   int_success     # 0x01
-        .word   int_success     # 0x02
+        .word   int_dbg         # 0x00
+        .word   int_dbg         # 0x01
+        .word   int_dbg         # 0x02
         .word   int_10_03       # 0x03
-        .word   int_success     # 0x04
-        .word   int_success     # 0x05
-        .word   int_success     # 0x06
-        .word   int_success     # 0x07
-        .word   int_success     # 0x08
+        .word   int_dbg         # 0x04
+        .word   int_dbg         # 0x05
+        .word   int_dbg         # 0x06
+        .word   int_dbg         # 0x07
+        .word   int_dbg         # 0x08
         .word   int_10_09       # 0x09
         .word   int_10_0A       # 0x0A
-        .word   int_success     # 0x0B
-        .word   int_success     # 0x0C
-        .word   int_success     # 0x0D
+        .word   int_dbg         # 0x0B
+        .word   int_dbg         # 0x0C
+        .word   int_dbg         # 0x0D
         .word   uart_send_byte  # 0x0E
-        .word   int_success     # 0x0F
+        .word   int_dbg         # 0x0F
 
 int_10_03:
         xor     %cx, %cx
@@ -222,7 +238,6 @@ int_10_0A:
 
 int_11h:
         movw    $0x0001, %ax    # nobody gets jealous of this config for sure
-        clc
         iret
 
 ##################################################
@@ -248,7 +263,6 @@ int_12h:
         jna     2f
         movw    $640, %ax
 2:
-        clc
         pop     %ds
         pop     %di
         iret
@@ -258,8 +272,23 @@ int_12h:
 # INT 13 -- disk services
 
 int_13h:
-        INTERRUPT_DISPATCH int_unimplemented_dispatch, 0x13
+        INTERRUPT_DISPATCH int_13_dispatch, 0x13
         iret
+
+int_13_dispatch:
+        .word   int_success             # 0x00
+        .word   int_13_01               # 0x01
+        .word   int_dbg                 # 0x02
+        .word   int_dbg                 # 0x03
+        .word   int_dbg                 # 0x04
+        .word   int_dbg                 # 0x05
+        .word   int_dbg                 # 0x06
+        .word   int_dbg                 # 0x07
+
+int_13_01:
+        xorb    %ah, %ah
+        clc
+        ret
 
 ##################################################
 
@@ -282,18 +311,24 @@ int_15h:
 # INT 16 -- keyboard services
 
 int_16h:
-        INTERRUPT_DISPATCH int_16_dispatch, 0x16
+        orb     %ah, %ah
+        jnz     1f
+        call    uart_receive_byte
         iret
-
-int_16_dispatch:
-        .word   uart_receive_byte       # 0x00
-        .word   uart_byte_available     # 0x01
-        .word   int_success             # 0x02
-        .word   int_success             # 0x03
-        .word   int_success             # 0x04
-        .word   int_success             # 0x05
-        .word   int_success             # 0x06
-        .word   int_success             # 0x07
+1:
+        cmpb    $0x01, %ah
+        jnz     1f
+        call    uart_byte_available
+        push    %bp
+        mov     %sp, %bp
+        andw    $0xFFBF, %ss:6(%bp)         # zero flag treatment
+        orw     %ax, %ss:6(%bp)
+        pop     %bp
+        or      %ax, %ax
+        jnz     1f
+        call    uart_receive_byte
+1:
+        iret
 
 ##################################################
 
@@ -311,9 +346,12 @@ int_18h:
         push    %ax
         movw    $0x0018, %ax
         push    %ax
-        call    int_debug
+        call    int_dbg
         pop     %ax
         pop     %ax
+1:
+        HALT_WAIT
+        jmp     1b
         iret
 
 ##################################################
@@ -324,28 +362,31 @@ int_19h:
         push    %ax
         movw    $0x0019, %ax
         push    %ax
-        call    int_debug
+        call    int_dbg
         pop     %ax
         pop     %ax
+1:
+        HALT_WAIT
+        jmp     1b
         iret
 
 ##################################################
 
 int_unimplemented_dispatch:
-        .word   int_debug               # 0x00
-        .word   int_debug               # 0x01
-        .word   int_debug               # 0x02
-        .word   int_debug               # 0x03
-        .word   int_debug               # 0x04
-        .word   int_debug               # 0x05
-        .word   int_debug               # 0x06
-        .word   int_debug               # 0x07
-        .word   int_debug               # 0x08
-        .word   int_debug               # 0x09
-        .word   int_debug               # 0x0A
-        .word   int_debug               # 0x0B
-        .word   int_debug               # 0x0C
-        .word   int_debug               # 0x0D
-        .word   int_debug               # 0x0E
-        .word   int_debug               # 0x0F
+        .word   int_dbg                 # 0x00
+        .word   int_dbg                 # 0x01
+        .word   int_dbg                 # 0x02
+        .word   int_dbg                 # 0x03
+        .word   int_dbg                 # 0x04
+        .word   int_dbg                 # 0x05
+        .word   int_dbg                 # 0x06
+        .word   int_dbg                 # 0x07
+        .word   int_dbg                 # 0x08
+        .word   int_dbg                 # 0x09
+        .word   int_dbg                 # 0x0A
+        .word   int_dbg                 # 0x0B
+        .word   int_dbg                 # 0x0C
+        .word   int_dbg                 # 0x0D
+        .word   int_dbg                 # 0x0E
+        .word   int_dbg                 # 0x0F
 
