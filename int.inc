@@ -8,6 +8,30 @@
         popf
 .endm
 
+
+
+.macro  INTERRUPT_DISPATCH      num, dispatch_table
+        push    %bp
+        movw    \num, %bp               # interrupt number
+        push    %bp
+        movw    $1f, %bp                # return address
+        push    %bp
+        push    %bp                     # space for the handler address
+        push    %ax
+        mov     %ah, %al
+        shl     %ax
+        xorb    %ah, %ah
+        movw    %ax, %bp                # offset in %bp
+        movw    %cs:\dispatch_table(%bp), %ax
+        movw    %sp, %bp
+        movw    %ax, %ss:-2(%bp)
+        pop     %ax
+        ret                             # call the handler (address in stack)
+1:
+        pop     %bp                     # clean up int number
+        pop     %bp
+.endm
+
 ##################################################
 
 int_init:
@@ -57,8 +81,8 @@ int_table:
         .word   int_11h         # INT 11
         .word   int_12h         # INT 12 - return RAM size
         .word   int_13h         # INT 13 - disk ops
-        .word   int_bad         # INT 14
-        .word   int_bad         # INT 15
+        .word   int_14h         # INT 14
+        .word   int_15h         # INT 15
         .word   int_16h         # INT 16 - character input
         .word   int_bad         # INT 17
         .word   int_bad         # INT 18
@@ -124,38 +148,14 @@ int_debug:
         ret
 
 ##################################################
-# INT 10H handler - VIDEO services (character output)
+
+# INT 10 -- video services
 
 int_10h:
-        push    %bp
-        movw    $0x0013, %bp            # interrupt number
-        push    %bp
-        movw    $1f, %bp                # return address
-        push    %bp
-        push    %bp                     # space for the handler address
-        movw    %sp, %bp
-
-        push    %ax
-        mov     %ah, %al
-        shl     $1, %ax
-        xorb    %ah, %ah
-        movw    %cs:int_10_dispatch(%si), %ax
-        movw    %ax, %ss:0(%bp)
-        pop     %ax
-
-        ret                             # call the handler (address in stack)
-        nop
-        nop
-1:
-        nop
-        nop
-        pop     %bp                     # clean up int number
-        pop     %bp
+        INTERRUPT_DISPATCH $0x0010, int_10_dispatch
         iret
 
-
-
-
+oldint10_h:
         push    %di
         push    %ax
         mov     %ah, %al
@@ -206,7 +206,8 @@ int_10_0A:
         ret
 
 ##################################################
-# INT 11H handler - return equipment list
+
+# INT 11 -- return equipment list
 # ax: result
 
 int_11h:
@@ -215,7 +216,8 @@ int_11h:
         iret
 
 ##################################################
-# INT 12H handler - return RAM size
+
+# INT 12 -- return RAM size
 # (cx == 0xA55A && dx == 0x5AA5) : real size, otherwise max 640k
 # ax: result
 
@@ -243,44 +245,31 @@ int_12h:
 
 ##################################################
 
-# dispatch INT 13
+# INT 13 -- disk services
 
 int_13h:
-        push    %bp
-        movw    $0x0013, %bp            # interrupt number
-        push    %bp
-        movw    $1f, %bp                # return address
-        push    %bp
-        push    %bp                     # space for the handler address
-        movw    %sp, %bp
-
-        push    %ax
-        mov     %ah, %al
-        shl     $1, %ax
-        xorb    %ah, %ah
-        addw    $int_13_dispatch, %ax
-        movw    %ax, %ss:0(%bp)
-        pop     %ax
-
-        ret                             # call the handler (address in stack)
-1:
-        pop     %bp                     # clean up int number
-        pop     %bp                     # clean up int number
+        INTERRUPT_DISPATCH $0x0013, int_unimplemented_dispatch
         iret
-
-int_13_dispatch:
-        .word   int_debug               # 0x00
-        .word   int_debug               # 0x01
-        .word   int_debug               # 0x02
-        .word   int_debug               # 0x03
-        .word   int_debug               # 0x04
-        .word   int_debug               # 0x05
-        .word   int_debug               # 0x06
-        .word   int_debug               # 0x07
 
 ##################################################
 
-# dispatch INT 16
+# INT 14 -- serial port services
+
+int_14h:
+        INTERRUPT_DISPATCH $0x0014, int_unimplemented_dispatch
+        iret
+
+##################################################
+
+# INT 15 -- misc services
+
+int_15h:
+        INTERRUPT_DISPATCH $0x0015, int_unimplemented_dispatch
+        iret
+
+##################################################
+
+# INT 16 -- keyboard services
 
 int_16h:
         push    %di
@@ -306,5 +295,55 @@ int_16_dispatch:
 
 ##################################################
 
+# INT 17 -- printer services
 
+int_17h:
+        INTERRUPT_DISPATCH $0x0017, int_unimplemented_dispatch
+        iret
+
+##################################################
+
+# INT 18 -- execute BASIC
+
+int_18h:
+        push    %ax
+        movw    $0x0018, %ax
+        push    %ax
+        call    int_debug
+        pop     %ax
+        pop     %ax
+        iret
+
+##################################################
+
+# INT 19 -- boot the OS
+
+int_19h:
+        push    %ax
+        movw    $0x0019, %ax
+        push    %ax
+        call    int_debug
+        pop     %ax
+        pop     %ax
+        iret
+
+##################################################
+
+int_unimplemented_dispatch:
+        .word   int_debug               # 0x00
+        .word   int_debug               # 0x01
+        .word   int_debug               # 0x02
+        .word   int_debug               # 0x03
+        .word   int_debug               # 0x04
+        .word   int_debug               # 0x05
+        .word   int_debug               # 0x06
+        .word   int_debug               # 0x07
+        .word   int_debug               # 0x08
+        .word   int_debug               # 0x09
+        .word   int_debug               # 0x0A
+        .word   int_debug               # 0x0B
+        .word   int_debug               # 0x0C
+        .word   int_debug               # 0x0D
+        .word   int_debug               # 0x0E
+        .word   int_debug               # 0x0F
 
