@@ -374,13 +374,6 @@ main_boot:
         mov     %ax, %si
         call    print_str_cs
 1:
-
-        mov     $0xBEEF, %ax
-        push    %ax
-        call    print_regs
-        pop     %ax
-
-        ret
         mov     $BOOTSEG, %ax
         mov     %ax, %es
         mov     %ax, %ds

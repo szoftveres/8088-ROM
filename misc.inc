@@ -107,13 +107,6 @@ print_regs:
         push    %bx
         push    %ax
 
-        mov     %sp, %bp
-        PRINT_CHAR $'\n'
-        PRINT_CHAR $'('
-        movw    %ss:22(%bp), %ax
-        call    print_h16
-        PRINT_CHAR $')'
- 
         movw    $text_AX, %si
         call    print_str_cs
         pop     %ax

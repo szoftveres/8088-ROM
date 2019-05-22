@@ -10,10 +10,12 @@
 
 
 
-.macro  INTERRUPT_DISPATCH      num, dispatch_table
+.macro  INTERRUPT_DISPATCH      dispatch_table:req, num
         push    %bp
-        movw    \num, %bp               # interrupt number
-        push    %bp
+        .ifnb   \num
+            movw    $\num, %bp              # interrupt number
+            push    %bp
+        .endif
         movw    $1f, %bp                # return address
         push    %bp
         push    %bp                     # space for the handler address
@@ -24,11 +26,13 @@
         movw    %ax, %bp                # offset in %bp
         movw    %cs:\dispatch_table(%bp), %ax
         movw    %sp, %bp
-        movw    %ax, %ss:-2(%bp)
+        movw    %ax, %ss:2(%bp)
         pop     %ax
         ret                             # call the handler (address in stack)
 1:
-        pop     %bp                     # clean up int number
+        .ifnb   \num
+            pop     %bp                     # clean up int number
+        .endif
         pop     %bp
 .endm
 
@@ -142,29 +146,35 @@ int_fail:
 
 # interrupt number in stack
 int_debug:
+        push    %si
+        push    %bp
+        push    %ax
+        movw    $text_int_dbg1, %si
+        call    print_str_cs
+        movw    %sp, %bp
+        movw    %ss:8(%bp), %ax
+        call    print_h8
+        movw    $text_int_dbg2, %si
+        call    print_str_cs
+        pop     %ax
+        pop     %bp
+        pop     %si
         call    print_regs
         stc                     # Sad
         movb    $0x00, %al
         ret
+
+text_int_dbg1:
+        .asciz  "\n -> int "
+text_int_dbg2:
+        .asciz  " --------------------"
 
 ##################################################
 
 # INT 10 -- video services
 
 int_10h:
-        INTERRUPT_DISPATCH $0x0010, int_10_dispatch
-        iret
-
-oldint10_h:
-        push    %di
-        push    %ax
-        mov     %ah, %al
-        shl     $1, %ax
-        xorb    %ah, %ah
-        movw    %ax, %di
-        pop     %ax
-        call    *%cs:int_10_dispatch(%di)
-        pop     %di
+        INTERRUPT_DISPATCH int_10_dispatch, 0x10
         iret
 
 int_10_dispatch:
@@ -248,7 +258,7 @@ int_12h:
 # INT 13 -- disk services
 
 int_13h:
-        INTERRUPT_DISPATCH $0x0013, int_unimplemented_dispatch
+        INTERRUPT_DISPATCH int_unimplemented_dispatch, 0x13
         iret
 
 ##################################################
@@ -256,7 +266,7 @@ int_13h:
 # INT 14 -- serial port services
 
 int_14h:
-        INTERRUPT_DISPATCH $0x0014, int_unimplemented_dispatch
+        INTERRUPT_DISPATCH int_unimplemented_dispatch, 0x14
         iret
 
 ##################################################
@@ -264,7 +274,7 @@ int_14h:
 # INT 15 -- misc services
 
 int_15h:
-        INTERRUPT_DISPATCH $0x0015, int_unimplemented_dispatch
+        INTERRUPT_DISPATCH int_unimplemented_dispatch, 0x15
         iret
 
 ##################################################
@@ -272,15 +282,7 @@ int_15h:
 # INT 16 -- keyboard services
 
 int_16h:
-        push    %di
-        push    %ax
-        mov     %ah, %al
-        shl     $1, %ax
-        xorb    %ah, %ah
-        movw    %ax, %di
-        pop     %ax
-        call    *%cs:int_16_dispatch(%di)
-        pop     %di
+        INTERRUPT_DISPATCH int_16_dispatch, 0x16
         iret
 
 int_16_dispatch:
@@ -298,7 +300,7 @@ int_16_dispatch:
 # INT 17 -- printer services
 
 int_17h:
-        INTERRUPT_DISPATCH $0x0017, int_unimplemented_dispatch
+        INTERRUPT_DISPATCH int_unimplemented_dispatch, 0x17
         iret
 
 ##################################################
