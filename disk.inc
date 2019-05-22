@@ -63,7 +63,8 @@ dpt_1440:
 
 ##################################################
 
-disk_init:
+disk_init_1440:
+        push    %ax
         push    %di
         push    %es             # save ES
 
@@ -74,24 +75,56 @@ disk_init:
         movw    $0x007A, %di    # int 0x1E vector, H
         movw    %cs, %es:(%di)
 
+        movw    $0x0002, %ax            # 2 head
+        movw    disk_heads, %ax
+        movw    $0x0050, %ax            # 80 cyl
+        movw    disk_cylinders, %ax
+        movw    $0x0012, %ax            # 18 sect
+        movw    disk_sectors, %ax
+
         pop     %es             # restore ES
         pop     %di
+        pop     %ax
         ret
 
 ##################################################
-# cx: cylinder + sector
+# ds must be set up
+# cx: cylinder + sector  (in INT13h format)
 # dh: head
+# cx: result
 
 disk_chs_to_lba:
-
-        mov     %cx, %ax
-        and     $0x003F, %ax    # lowest 6 bits
-        dec     %ax             # sector - 1
-        push    %ax             # we have the sector
-        movb    %dh, %al
         push    %ax
+        mov     %cx, %ax
+        and     $0x003F, %ax        # lowest 6 bits
+        dec     %ax
+        push    %ax                 # we have the sector - 1
 
+        movb    %dh, %al
+        push    %ax                 # we have the head
+
+        movb    %cl, %ah
+        rol     %ah
+        rol     %ah
+        movb    %ch, %al
+        and     $0x03FF, %ax        # we have the cylinder
+
+        mov     disk_heads, %cx     # nHeads
+        mul     %cx                 # (Cyl × nHeads)
+
+        pop     %cx                 # Head
+        add     %cx, %ax            # ((Cyl × nHeads) + Head)
         
+        mov     disk_sectors, %cx   # nSects
+        mul     %cx                 # (((Cyl × nHeads) + Head) × nSects)
+
+        pop     %cx                 # (Sect − 1)
+        add     %cx, %ax            # (((Cyl × nHeads) + Head) × nSects) + (Sect − 1)
+
+        mov     %ax, %cx
+
+        pop     %ax
+        ret
 
 
 ##################################################
@@ -101,15 +134,12 @@ disk_chs_to_lba:
 ipl:
         push    %cx
         push    %dx
-        push    %ds
         push    %es
         push    %di
 
         mov     $BOOTSEG, %cx
         mov     %cx, %es
         mov     $BOOTADDR, %di
-        mov     $DSEG, %cx
-        mov     %cx, %ds
 
         movw    sdcard_block_to_byte, %ax
         cmpw    $0x0009, %ax
@@ -157,6 +187,7 @@ ipl:
         movw    $text_ipl_parsize, %ax      # first partiton is not 1.44Mb
         stc
         jnz     9f
+        call    disk_init_1440
 
 # --- load the boot sector of the first partition to 7C00
         mov     $BOOTADDR, %di
@@ -177,7 +208,6 @@ ipl:
 9:
         pop     %di
         pop     %es
-        pop     %ds
         pop     %dx
         pop     %cx
         ret

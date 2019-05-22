@@ -13,6 +13,7 @@
 # CS
 # IP <-
 # %bp
+# %ds
 # <optional: int number>
 # return address from handler
 # handler address
@@ -21,6 +22,9 @@
 
 .macro  INTERRUPT_DISPATCH      dispatch_table:req, num
         push    %bp
+        push    %ds
+        mov     $DSEG, %bp
+        mov     %bp, %ds
         .ifnb   \num
             movw    $\num, %bp              # interrupt number
             push    %bp
@@ -36,6 +40,7 @@
         movw    %cs:\dispatch_table(%bp), %ax
         movw    %sp, %bp
         movw    %ax, %ss:2(%bp)
+#         movw    %ss:10(%bp), %bp        # temporarily restore original bp
         pop     %ax
         ret                             # call the handler (address in stack)
 1:
@@ -45,16 +50,17 @@
         movw    %sp, %bp
         andw    $0x0001, %ax            # carry set?
         .ifnb   \num
+            andw    $0xFFFE, %ss:12(%bp)
+            orw     %ax, %ss:12(%bp)
+        .else
             andw    $0xFFFE, %ss:10(%bp)
             orw     %ax, %ss:10(%bp)
-        .else
-            andw    $0xFFFE, %ss:8(%bp)
-            orw     %ax, %ss:8(%bp)
         .endif
         pop     %ax
         .ifnb   \num
             pop     %bp                     # clean up int number
         .endif
+        pop     %ds
         pop     %bp
 .endm
 
@@ -290,6 +296,46 @@ int_13_01:
         clc
         ret
 
+
+int_13_02:
+        push    %ax
+        push    %bx
+        push    %cx
+        push    %dx
+        push    %di
+
+        push    %bp
+        mov     $0x0013, %bp
+        push    %bp
+        call    int_dbg
+        pop     %bp
+        pop     %bp
+
+        call    disk_chs_to_lba                 # get the sector num
+        addw    partition_offset_lba_lo, %cx    # start offset
+        xor     %dx, %dx
+
+        andw    $0x00FF, %ax                    # sectors to read
+1:
+        mov     %bx, %di                        # es:(di) buffer
+        call    sd_read_block
+        addw    $0x0200, %di
+        inc     %cx
+        dec     %ax
+        jnz     1b
+        
+        pop     %di
+        pop     %dx
+        pop     %cx
+        pop     %bx
+        pop     %ax
+
+        int     $0x19
+
+        clc
+        ret
+
+
 ##################################################
 
 # INT 14 -- serial port services
@@ -311,6 +357,12 @@ int_15h:
 # INT 16 -- keyboard services
 
 int_16h:
+        push    %bp
+        push    %ds
+        mov     $DSEG, %bp
+        mov     %bp, %ds
+
+
         orb     %ah, %ah
         jnz     1f
         call    uart_receive_byte
@@ -328,6 +380,8 @@ int_16h:
         jnz     1f
         call    uart_receive_byte
 1:
+        pop     %ds
+        pop     %bp
         iret
 
 ##################################################
@@ -365,10 +419,14 @@ int_19h:
         call    int_dbg
         pop     %ax
         pop     %ax
-1:
-        HALT_WAIT
-        jmp     1b
-        iret
+
+        mov     $DSEG, %ax
+        mov     %ax, %ds
+        mov     boot_cs, %ax
+        push    %ax
+        mov     $startover, %ax
+        push    %ax                     # start address offset
+        lret
 
 ##################################################
 

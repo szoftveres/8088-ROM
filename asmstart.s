@@ -21,11 +21,16 @@
 .equ    BOOTSEG,        0x0000
 .equ    BOOTADDR,       0x7C00
 
+# BIOS 
+.equ    ROM_BOOT_SEG,   0xF000
+
 ##################################################
 .section .bss
 
 .local ramsize
 .comm ramsize, 2, 2
+.local boot_cs
+.comm boot_cs, 2, 2
 
 ##################################################
 .section .text
@@ -90,7 +95,7 @@ cpu_ok:
 
         mov     %cs, %ax
         cmp     $ROMSEG, %ax
-        jb      skip_ram_checks
+        jb      warm_start
 
 ##################################################
 # Test minimal RAM
@@ -180,11 +185,19 @@ ram_det_bail:
         mov     $ramsize, %di
         mov     %ax, (%di)      # store the result
 
-skip_ram_checks:
+##################################################
+# overwrite set up the interrupt table as well
+
+warm_start:
+        mov     $SSEG, %ax
+        mov     %ax, %ss
+        mov     $STACKP,%sp
+        call    int_init
 
 ##################################################
-# set up segment registers
+# don't touch the interrupt table
 
+startover:
         mov     $DSEG, %ax
         mov     %ax, %ds
         mov     $SSEG, %ax
@@ -192,18 +205,17 @@ skip_ram_checks:
         mov     $STACKP,%sp
         push    %cs
         pop     %es
+        mov     %cs, boot_cs
 
 ##################################################
 # init hardware and interrupt table
 
-        call    int_init
         call    pic_init
         sti
         call    uart_init
         call    spi_init
         call    sd_system_init
         call    sd_init
-        call    disk_init
 
 ##################################################
 
@@ -497,10 +509,8 @@ text_maxram:
 
 .section .cpu_entry
 
-.equ    CSEG,       0xF000
-
 cpu_start:
-        jmp     $CSEG,$_start
+        jmp     $ROM_BOOT_SEG,$_start
 text_romdate:
 .include    "date.inc"
 

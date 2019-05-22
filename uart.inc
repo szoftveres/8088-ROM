@@ -80,13 +80,11 @@ int_uart:
         iret
 
 ##################################################
+# ds must be set up
 # al: data byte
 
 uart_send_byte:
-        push    %ds
         push    %ax;
-        mov     $DSEG, %ax
-        mov     %ax, %ds
 1:
         inb     $UART_BASE+5, %al       # LSR
         and     $0x0020, %ax
@@ -96,36 +94,30 @@ uart_send_byte:
 2:
         pop     %ax
         outb    %al, $UART_BASE+0
-        pop     %ds
         clc
         ret
 
 ##################################################
+# ds must be set up
 # ax: zero flag == 0 : (0x0000) if something available 
 # ax: zero flag == 1 : (0x0040) if nothing
 
 uart_byte_available:
         push    %si
-        push    %ds
-        mov     $DSEG, %si
-        mov     %si, %ds
         mov     uart_rcvbuf_rd, %si
         cmp     uart_rcvbuf_wr, %si
         pushf
         pop     %ax
         andw    $0040, %ax              # zero flag
-        pop     %ds
         pop     %si
         ret
 
 ##################################################
+# ds must be set up
 # al: return data byte
 
 uart_receive_byte:
         push    %si
-        push    %ds
-        mov     $DSEG, %si
-        mov     %si, %ds
 1:
         mov     uart_rcvbuf_rd, %si
         cmp     uart_rcvbuf_wr, %si
@@ -138,7 +130,6 @@ uart_receive_byte:
         mov     %si, uart_rcvbuf_rd
         movb    uart_rcvbuf(%si), %al
 
-        pop     %ds
         pop     %si
         clc
         ret
