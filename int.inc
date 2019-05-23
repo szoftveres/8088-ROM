@@ -282,7 +282,7 @@ int_13h:
         iret
 
 int_13_dispatch:
-        .word   int_success             # 0x00
+        .word   int_13_00               # 0x00
         .word   int_13_01               # 0x01
         .word   int_dbg                 # 0x02
         .word   int_dbg                 # 0x03
@@ -291,6 +291,7 @@ int_13_dispatch:
         .word   int_dbg                 # 0x06
         .word   int_dbg                 # 0x07
 
+int_13_00:
 int_13_01:
         xorb    %ah, %ah
         clc
@@ -332,6 +333,7 @@ int_13_02:
 
         int     $0x19
 
+        xorb    %ah, %ah
         clc
         ret
 
