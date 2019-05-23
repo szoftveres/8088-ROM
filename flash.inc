@@ -1,20 +1,48 @@
 .equ    FLASH_SECT_SIZE,        0x1000
 
 ##################################################
-# zeroFlag: 1: running from RAM    0: running from ROM
+# These functions overwrite the actual 
+# code in 'flash_cmd', the goal is to prevent
+# "accidental" exeution of flash write
 
-check_flash_cs:
-        push    %ax
-        mov     %cs, %ax
-        cmp     $ROMSEG, %ax
-        jb      1f
-        mov     $0xFFFF, %ax
-        or      %ax, %ax        # Z=0
-        jmp     2f
-1:
-        xor     %ax, %ax        # Z=1
-2:
-        pop     %ax
+flash_unlock:
+        push    %ds
+        push    %si
+
+        push    %cs
+        pop     %ds
+
+        movw    $flash_cmd, %si
+        movb    $0x90, %ds:0(%si)       # NOP instruction
+        movw    $fcmd1, %si
+        movw    $0x5555, %ds:1(%si)     # 1st address
+        movw    $fcmd3, %si
+        movw    $0x2AAA, %ds:1(%si)     # 2nd address
+        movw    $flash_write, %si
+        movb    $0x90, %ds:0(%si)       # NOP instruction
+
+        pop     %si
+        pop     %ds
+        ret
+
+flash_lock:
+        push    %ds
+        push    %si
+
+        push    %cs
+        pop     %ds
+
+        movw    $flash_cmd, %si
+        movb    $0xC3, %ds:0(%si)       # RET instruction
+        movw    $fcmd1, %si
+        movw    $0x0000, %ds:1(%si)     # 1st address
+        movw    $fcmd3, %si
+        movw    $0x0000, %ds:1(%si)     # 2nd address
+        movw    $flash_write, %si
+        movb    $0xC3, %ds:0(%si)       # RET instruction
+
+        pop     %si
+        pop     %ds
         ret
 
 
@@ -23,9 +51,10 @@ check_flash_cs:
 # al: data byte
 
 flash_write:
+        ret                     # see flash_unlock
         push    %ds
         push    %ax
-        mov     $0xE000, %ax
+        mov     $0xF000, %ax
         mov     %ax, %ds
         pop     %ax
         movb    %al, (%di)
@@ -39,27 +68,29 @@ flash_write:
 flash_read:
         push    %ds
         push    %ax
-        mov     $0xE000, %ax
+        mov     $0xF000, %ax
         mov     %ax, %ds
         pop     %ax
         movb    (%di), %al
         pop     %ds
         ret
 
-
 ##################################################
 # al: command byte
 # di: 3rd command address
 
 flash_cmd:
+        ret                     # see flash_unlock
         push    %di
         push    %ax
-
-        movw    $0x5555, %di
+fcmd1:
+        movw    $0x0000, %di    # see flash_unlock
+fcmd2:
         movb    $0xAA, %al
         call    flash_write
-
-        movw    $0x2AAA, %di
+fcmd3:
+        movw    $0x0000, %di    # see flash_unlock
+fcmd4:
         movb    $0x55, %al
         call    flash_write
         pop     %ax

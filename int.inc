@@ -284,11 +284,36 @@ int_13h:
 int_13_dispatch:
         .word   int_13_00               # 0x00
         .word   int_13_01               # 0x01
-        .word   int_dbg                 # 0x02
+        .word   int_13_02               # 0x02
         .word   int_dbg                 # 0x03
         .word   int_dbg                 # 0x04
         .word   int_dbg                 # 0x05
         .word   int_dbg                 # 0x06
+        .word   int_dbg                 # 0x07
+
+        .word   int_dbg                 # 0x07
+        .word   int_dbg                 # 0x07
+        .word   int_dbg                 # 0x07
+        .word   int_dbg                 # 0x07
+        .word   int_dbg                 # 0x07
+        .word   int_dbg                 # 0x07
+        .word   int_dbg                 # 0x07
+        .word   int_dbg                 # 0x07
+        .word   int_dbg                 # 0x07
+        .word   int_dbg                 # 0x07
+        .word   int_dbg                 # 0x07
+        .word   int_dbg                 # 0x07
+        .word   int_dbg                 # 0x07
+        .word   int_dbg                 # 0x07
+        .word   int_dbg                 # 0x07
+        .word   int_dbg                 # 0x07
+        .word   int_dbg                 # 0x07
+        .word   int_dbg                 # 0x07
+        .word   int_dbg                 # 0x07
+        .word   int_dbg                 # 0x07
+        .word   int_dbg                 # 0x07
+        .word   int_dbg                 # 0x07
+        .word   int_dbg                 # 0x07
         .word   int_dbg                 # 0x07
 
 int_13_00:
@@ -305,24 +330,25 @@ int_13_02:
         push    %dx
         push    %di
 
+        push    %ax
         push    %bp
         mov     $0x0013, %bp
         push    %bp
         call    int_dbg
         pop     %bp
         pop     %bp
+        pop     %ax
 
         call    disk_chs_to_lba                 # get the sector num
         addw    partition_offset_lba_lo, %cx    # start offset
         xor     %dx, %dx
 
-        andw    $0x00FF, %ax                    # sectors to read
 1:
         mov     %bx, %di                        # es:(di) buffer
         call    sd_read_block
         addw    $0x0200, %di
         inc     %cx
-        dec     %ax
+        dec     %al
         jnz     1b
         
         pop     %di
@@ -330,8 +356,6 @@ int_13_02:
         pop     %cx
         pop     %bx
         pop     %ax
-
-        int     $0x19
 
         xorb    %ah, %ah
         clc
@@ -368,7 +392,7 @@ int_16h:
         orb     %ah, %ah
         jnz     1f
         call    uart_receive_byte
-        iret
+        jmp     2f
 1:
         cmpb    $0x01, %ah
         jnz     1f
@@ -382,6 +406,7 @@ int_16h:
         jnz     1f
         call    uart_receive_byte
 1:
+2:
         pop     %ds
         pop     %bp
         iret
@@ -433,6 +458,23 @@ int_19h:
 ##################################################
 
 int_unimplemented_dispatch:
+        .word   int_dbg                 # 0x00
+        .word   int_dbg                 # 0x01
+        .word   int_dbg                 # 0x02
+        .word   int_dbg                 # 0x03
+        .word   int_dbg                 # 0x04
+        .word   int_dbg                 # 0x05
+        .word   int_dbg                 # 0x06
+        .word   int_dbg                 # 0x07
+        .word   int_dbg                 # 0x08
+        .word   int_dbg                 # 0x09
+        .word   int_dbg                 # 0x0A
+        .word   int_dbg                 # 0x0B
+        .word   int_dbg                 # 0x0C
+        .word   int_dbg                 # 0x0D
+        .word   int_dbg                 # 0x0E
+        .word   int_dbg                 # 0x0F
+
         .word   int_dbg                 # 0x00
         .word   int_dbg                 # 0x01
         .word   int_dbg                 # 0x02

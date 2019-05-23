@@ -15,7 +15,7 @@
 .equ    STACKP,             0x0200
 
 # First address above the interrupt table
-.equ    DSEG,               0x0040
+.equ    DSEG,               0x0040   # used to be 0040
 
 # Boot sector load address
 .equ    BOOTSEG,        0x0000
@@ -31,6 +31,10 @@
 .comm ramsize, 2, 2
 .local boot_cs
 .comm boot_cs, 2, 2
+.local warmboot_request
+.comm warmboot_request, 2, 2
+
+.equ    WARMBOOT_REQUEST,   0x5A85
 
 ##################################################
 .section .text
@@ -93,8 +97,14 @@ cpu_ok:
 # Skip RAM checks when we're running from RAM
 # otherwise we would overwrite ourselves
 
-        mov     %cs, %ax
-        cmp     $ROMSEG, %ax
+        movw    $DSEG, %ax
+        movw    %ax, %ds
+        movw    warmboot_request, %ax
+        cmpw    $WARMBOOT_REQUEST, %ax
+        movw    $0x0000, warmboot_request
+        jz      startover
+        movw    %cs, %ax
+        cmpw    $ROMSEG, %ax
         jb      warm_start
 
 ##################################################
@@ -267,6 +277,11 @@ mainloop:
         call    main_boot
         jmp     2f              # help
 1:
+        cmp     $'w', %al
+        jnz     1f
+        call    main_warmboot
+        jmp     2f              # help
+1:
         cmp     $'\n', %al
         jnz     1f
         jmp     2f              # help
@@ -291,6 +306,7 @@ main_help_text:
         .ascii   "     s : burn [ES:0000] to ROM [E000:0000]\n"
         .ascii   "     g : execute at [ES:0000]\n"
         .ascii   "     b : boot [0000:7C00]\n"
+        .ascii   "     w : warm boot on next reset\n"
         .asciz   "\n"
 
 ##################################################
@@ -366,16 +382,15 @@ main_eseg_chg:
 ##################################################
 
 main_flash:
-        call    check_flash_cs
-        jnz     1f
         PRINT_CHAR $'\n'
-
+        call    flash_unlock
         call    erase_seg
         jc      1f
         call    byte_program_seg
         jc      1f
         call    verify_seg
 1:
+        call    flash_lock
         ret
 
 ##################################################
@@ -386,11 +401,20 @@ main_boot:
         jnc     1f
         mov     %ax, %si
         call    print_str_cs
+        ret
 1:
         mov     $BOOTSEG, %ax
         mov     %ax, %es
         mov     %ax, %ds
         jmp     $BOOTSEG,$BOOTADDR
+
+##################################################
+
+main_warmboot:
+        movw    $WARMBOOT_REQUEST, %ax
+        movw    %ax, warmboot_request
+        PRINT_CHAR $'\n'
+        ret
 
 ##################################################
 
