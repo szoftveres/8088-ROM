@@ -343,8 +343,8 @@ int_13_02:
         addw    partition_offset_lba_lo, %cx    # start offset
         xor     %dx, %dx
 
-1:
         mov     %bx, %di                        # es:(di) buffer
+1:
         call    sd_read_block
         addw    $0x0200, %di
         inc     %cx
