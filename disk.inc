@@ -176,6 +176,50 @@ disk_chs_to_lba:
 
 
 ##################################################
+# int 13h 02 handler
+
+disk_read_chs:
+        push    %ax
+        push    %bx
+        push    %cx
+        push    %dx
+        push    %di
+
+# -- debug --
+        push    %ax         # int_dbg alters %al, hence saving it
+        push    %bp
+        mov     $0x0013, %bp
+        push    %bp
+        call    int_dbg
+        pop     %bp
+        pop     %bp
+        pop     %ax
+# -- end debug --
+
+        call    disk_chs_to_lba                 # get the sector num
+        addw    partition_offset_lba_lo, %cx    # start offset
+        xor     %dx, %dx
+
+        mov     %bx, %di                        # es:(di) buffer
+1:
+        call    sd_read_block
+        addw    $0x0200, %di
+        inc     %cx
+        dec     %al
+        jnz     1b
+
+        pop     %di
+        pop     %dx
+        pop     %cx
+        pop     %bx
+        pop     %ax
+
+        xorb    %ah, %ah
+        clc
+        ret
+
+
+##################################################
 # carry: error
 # ax: error message
 

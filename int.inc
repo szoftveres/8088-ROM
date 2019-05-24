@@ -284,7 +284,7 @@ int_13h:
 int_13_dispatch:
         .word   int_13_00               # 0x00
         .word   int_13_01               # 0x01
-        .word   int_13_02               # 0x02
+        .word   disk_read_chs           # 0x02
         .word   int_dbg                 # 0x03
         .word   int_dbg                 # 0x04
         .word   int_dbg                 # 0x05
@@ -318,45 +318,6 @@ int_13_dispatch:
 
 int_13_00:
 int_13_01:
-        xorb    %ah, %ah
-        clc
-        ret
-
-
-int_13_02:
-        push    %ax
-        push    %bx
-        push    %cx
-        push    %dx
-        push    %di
-
-        push    %ax
-        push    %bp
-        mov     $0x0013, %bp
-        push    %bp
-        call    int_dbg
-        pop     %bp
-        pop     %bp
-        pop     %ax
-
-        call    disk_chs_to_lba                 # get the sector num
-        addw    partition_offset_lba_lo, %cx    # start offset
-        xor     %dx, %dx
-
-        mov     %bx, %di                        # es:(di) buffer
-1:
-        call    sd_read_block
-        addw    $0x0200, %di
-        inc     %cx
-        dec     %al
-        jnz     1b
-        
-        pop     %di
-        pop     %dx
-        pop     %cx
-        pop     %bx
-        pop     %ax
-
         xorb    %ah, %ah
         clc
         ret
