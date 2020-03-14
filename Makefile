@@ -1,5 +1,5 @@
 OBJDIR = .
-SRCDIR = .
+SRCDIR = src
 INCLDIR = .
 OUTDIR = .
 

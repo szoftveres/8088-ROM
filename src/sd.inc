@@ -23,6 +23,8 @@
 .local sdcard_block_to_byte             # rotate cycles
 .comm sdcard_block_to_byte, 2, 2
 
+.local sdcard_init_data                 # sdcard init parameters
+.comm sdcard_init_data, 16, 2
 
 .section .text
 ##################################################
@@ -201,11 +203,10 @@ sd_init:
         push    %es
         push    %di
 
-        mov     $BOOTSEG, %ax
-        mov     %ax, %es
-        mov     $BOOTADDR, %di
+        mov     $sdcard_init_data, %di
         mov     $DSEG, %ax
         mov     %ax, %ds
+        mov     %ax, %es
 
         movb    $0x55, %al
         movb    %al, sdcard_alive   # first mark the card as alive
@@ -266,7 +267,7 @@ sd_init:
         jnz     5f                  # bail if response is not OK (0x00)
 # --- read data
         call    sd_delay
-        mov     $BOOTSEG, %cx
+        mov     $DSEG, %cx
         mov     %cx, %es
         mov     $0x0010, %cx        # 16 bytes
         call    sd_read_data

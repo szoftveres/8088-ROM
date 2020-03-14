@@ -39,7 +39,7 @@
 ##################################################
 .section .text
 
-.include    "macros.inc"
+.include    "src/macros.inc"
 
 _start:
         cli                             # mask all interrupts
@@ -221,6 +221,7 @@ startover:
 # init hardware and interrupt table
 
         call    pic_init
+        call    clock_init
         sti
         call    uart_init
         call    spi_init
@@ -235,6 +236,7 @@ startover:
 ##################################################
 
 main_help:
+        call    print_clock
         movw    $main_help_text, %si
         call    print_str_cs
         call    print_seginfo
@@ -303,7 +305,7 @@ main_help_text:
         .ascii   "     d : memdump [ES:<start>]\n"
         .ascii   "     r : receive to [ES:0000]\n"
         .ascii   "     c : copy [<seg>:0000] to [ES:0000]\n"
-        .ascii   "     s : burn [ES:0000] to ROM [E000:0000]\n"
+        .ascii   "     s : burn [ES:0000] to ROM [F000:0000]\n"
         .ascii   "     g : execute at [ES:0000]\n"
         .ascii   "     b : boot [0000:7C00]\n"
         .ascii   "     w : warm boot on next reset\n"
@@ -397,8 +399,12 @@ main_flash:
 
 main_boot:
 
+        movw    $0x0000, %ax
+        int     $0x13           # reset disk
+        jc      2f
         call    ipl
         jnc     1f
+2:
         mov     %ax, %si
         call    print_str_cs
         ret
@@ -518,16 +524,17 @@ text_maxram:
 
 ##################################################
 
-.include    "int.inc"
-.include    "uart.inc"
-.include    "string.inc"
-.include    "led.inc"
-.include    "spi.inc"
-.include    "sd.inc"
-.include    "disk.inc"
-.include    "cpu.inc"
-.include    "misc.inc"
-.include    "flash.inc"
+.include    "src/int.inc"
+.include    "src/uart.inc"
+.include    "src/timer.inc"
+.include    "src/string.inc"
+.include    "src/led.inc"
+.include    "src/spi.inc"
+.include    "src/sd.inc"
+.include    "src/disk.inc"
+.include    "src/cpu.inc"
+.include    "src/misc.inc"
+.include    "src/flash.inc"
 
 # ==== CPU cold start ====
 

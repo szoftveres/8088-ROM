@@ -47,6 +47,7 @@ flash_lock:
 
 
 ##################################################
+# Segment hardcoded to F000
 # di: address
 # al: data byte
 
@@ -62,6 +63,7 @@ flash_write:
         ret
 
 ##################################################
+# Segment hardcoded to F000
 # di: address
 # al: data byte
 

@@ -20,7 +20,7 @@
 # %ax
 
 
-.macro  INTERRUPT_DISPATCH      dispatch_table:req, num
+.macro  INTERRUPT_DISPATCH      dispatch_table:req, num:req
         push    %bp
         push    %ds
         mov     $DSEG, %bp
@@ -44,22 +44,17 @@
         pop     %ax
         ret                             # call the handler (address in stack)
 1:
-        push    %ax
-        pushf
-        pop     %ax
-        movw    %sp, %bp
-        andw    $0x0001, %ax            # carry set?
-        .ifnb   \num
-            andw    $0xFFFE, %ss:12(%bp)
-            orw     %ax, %ss:12(%bp)
-        .else
-            andw    $0xFFFE, %ss:10(%bp)
-            orw     %ax, %ss:10(%bp)
-        .endif
-        pop     %ax
         .ifnb   \num
             pop     %bp                     # clean up int number
         .endif
+        push    %ax
+        pushf
+        pop     %ax
+        andw    $0x0001, %ax            # carry set?
+        movw    %sp, %bp
+        andw    $0xFFFE, %ss:8(%bp)     # First zero out carry
+        orw     %ax, %ss:8(%bp)         # Then set it if needed
+        pop     %ax
         pop     %ds
         pop     %bp
 .endm
@@ -105,8 +100,8 @@ int_table:
         .word   int_dummy       # INT 09 - IRQ1
         .word   int_dummy       # INT 0A - IRQ2
         .word   int_dummy       # INT 0B - IRQ3
-        .word   int_dummy       # INT 0C - IRQ4 - 2 Hz
-        .word   int_dummy       # INT 0D - IRQ5 - 16 Hz
+        .word   int_timer_2hz   # INT 0C - IRQ4 - 2 Hz
+        .word   int_timer_32hz  # INT 0D - IRQ5 - 32 Hz
         .word   int_dummy       # INT 0E - IRQ6
         .word   int_uart        # INT 0F - IRQ7 - UART
         .word   int_10h         # INT 10 - character output
@@ -121,7 +116,7 @@ int_table:
         .word   int_19h         # INT 19
         .word   int_bad         # INT 1A
         .word   int_bad         # INT 1B
-        .word   int_bad         # INT 1C
+        .word   int_dummy       # INT 1C - user timer tick
         .word   int_bad         # INT 1D
         .word   int_bad         # INT 1E
         .word   int_bad         # INT 1F
@@ -144,7 +139,7 @@ pic_init:
         movb    $0x01, %al          # ICW4 - non buffered mode, 8086/8088
         outb    %al, $PIC_BASE+1
 
-        movb    $0x7F, %al          # OCW1: unmask UART
+        movb    $0x4F, %al          # OCW1: unmask UART and timer
         outb    %al, $PIC_BASE+1
 
         pop     %ax
@@ -182,6 +177,7 @@ int_dbg:
         pop     %bp
         pop     %si
         call    print_regs
+        call    print_seginfo
         movb    $0x00, %al
         stc                     # sad
         ret
@@ -281,8 +277,24 @@ int_13h:
         INTERRUPT_DISPATCH int_13_dispatch, 0x13
         iret
 
+int_13_01:
+int_13_15:
+        xorb    %ah, %ah
+        clc
+        ret
+
+int_13_08:
+        andb    $0x82, %al
+        stc
+        jnz     1f
+        movb    $0x04, %bl
+        movb    $0x00, %al
+        clc
+1:
+        ret
+
 int_13_dispatch:
-        .word   int_13_00               # 0x00
+        .word   disk_reset              # 0x00
         .word   int_13_01               # 0x01
         .word   disk_read_chs           # 0x02
         .word   int_dbg                 # 0x03
@@ -291,36 +303,32 @@ int_13_dispatch:
         .word   int_dbg                 # 0x06
         .word   int_dbg                 # 0x07
 
-        .word   int_dbg                 # 0x07
-        .word   int_dbg                 # 0x07
-        .word   int_dbg                 # 0x07
-        .word   int_dbg                 # 0x07
-        .word   int_dbg                 # 0x07
-        .word   int_dbg                 # 0x07
-        .word   int_dbg                 # 0x07
-        .word   int_dbg                 # 0x07
-        .word   int_dbg                 # 0x07
-        .word   int_dbg                 # 0x07
-        .word   int_dbg                 # 0x07
-        .word   int_dbg                 # 0x07
-        .word   int_dbg                 # 0x07
-        .word   int_dbg                 # 0x07
-        .word   int_dbg                 # 0x07
-        .word   int_dbg                 # 0x07
-        .word   int_dbg                 # 0x07
-        .word   int_dbg                 # 0x07
-        .word   int_dbg                 # 0x07
-        .word   int_dbg                 # 0x07
-        .word   int_dbg                 # 0x07
-        .word   int_dbg                 # 0x07
-        .word   int_dbg                 # 0x07
-        .word   int_dbg                 # 0x07
+        .word   int_dbg                 # 0x08
+        .word   int_dbg                 # 0x09
+        .word   int_dbg                 # 0x0A
+        .word   int_dbg                 # 0x0B
+        .word   int_dbg                 # 0x0C
+        .word   int_dbg                 # 0x0D
+        .word   int_dbg                 # 0x0E
+        .word   int_dbg                 # 0x0F
 
-int_13_00:
-int_13_01:
-        xorb    %ah, %ah
-        clc
-        ret
+        .word   int_dbg                 # 0x10
+        .word   int_dbg                 # 0x11
+        .word   int_dbg                 # 0x12
+        .word   int_dbg                 # 0x13
+        .word   int_dbg                 # 0x14
+        .word   int_13_15               # 0x15
+        .word   int_dbg                 # 0x16
+        .word   int_dbg                 # 0x17
+
+        .word   int_dbg                 # 0x18
+        .word   int_dbg                 # 0x19
+        .word   int_dbg                 # 0x1A
+        .word   int_dbg                 # 0x1B
+        .word   int_dbg                 # 0x1C
+        .word   int_dbg                 # 0x1D
+        .word   int_dbg                 # 0x1E
+        .word   int_dbg                 # 0x1F
 
 
 ##################################################
