@@ -3,6 +3,8 @@ ROM BIOS for 8088
 
 ![image small x86](pcb.png)
 
+![schematics](schematics.pdf)
+
 This is a ROM BIOS for a 8088 single board computer. It resides in the upper 64k of the ROM and the CPU starts executing it at startup.
 The board features a 16550 UART (IRQ7), two periodical time sources: 32kHz (IRQ5) and 2Hz (IRQ4), a 4-bit I/O port, 1Mb SRAM and 128k EEPROM.
 

@@ -1,6 +1,10 @@
 .code16
 .arch i8086  #,nojumps             # see documentation
 
+# 0000:0000 - 0000:03FF   1kB  interrupt vectors
+# 0020:0200               SP on top of interrupt vectors
+# 0040:0000               DS
+
 .global main
 .global _start
 
