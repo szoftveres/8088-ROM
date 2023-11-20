@@ -15,8 +15,8 @@
 .equ    IO_BASE,    0x0060
 
 # upper 512 byte of the interrupt table
-.equ    SSEG,               0x0020
-.equ    STACKP,             0x0200
+.equ    SSEG,               0x0030
+.equ    STACKP,             0x0100
 
 # First address above the interrupt table
 .equ    DSEG,               0x0040   # used to be 0040
@@ -103,9 +103,9 @@ cpu_ok:
 
         movw    $DSEG, %ax
         movw    %ax, %ds
-        movw    warmboot_request, %ax
+        movw    %ds:warmboot_request, %ax
         cmpw    $WARMBOOT_REQUEST, %ax
-        movw    $0x0000, warmboot_request
+        movw    $0x0000, %ds:warmboot_request
         jz      startover
         movw    %cs, %ax
         cmpw    $ROMSEG, %ax
@@ -197,7 +197,7 @@ ram_det_bail:
         movb    $6, %cl          # convert segment to kb
         shr     %cl, %ax
         mov     $ramsize, %di
-        mov     %ax, (%di)      # store the result
+        mov     %ax, %ds:(%di)      # store the result
 
 ##################################################
 # overwrite set up the interrupt table as well
@@ -236,6 +236,7 @@ startover:
 
         call    led_off
         call    print_banner
+        call    uart_type
 
 ##################################################
 
@@ -528,6 +529,7 @@ text_maxram:
 
 ##################################################
 
+.include    "src/i8259.inc"
 .include    "src/int.inc"
 .include    "src/uart.inc"
 .include    "src/timer.inc"

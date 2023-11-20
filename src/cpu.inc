@@ -17,7 +17,7 @@ cpu_id:
 
 
 text_cpu_v20:
-        .asciz   "NEC V20"
+        .asciz   "V20"
 
 text_cpu_8088:
         .asciz   "8088"

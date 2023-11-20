@@ -31,7 +31,7 @@
 sd_system_init:
         push    %ax
         movb    $0x00, %al
-        movb    %al, sdcard_alive
+        movb    %al, %ds:sdcard_alive
         pop     %ax
         ret
 
@@ -43,7 +43,7 @@ sd_mark_state:
         push    %ax
         jnc     1f
         movb    $0x00, %al
-        movb    %al, sdcard_alive
+        movb    %al, %ds:sdcard_alive
 1:
         pop     %ax
         popf
@@ -55,7 +55,7 @@ sd_mark_state:
 sd_check_state:
         push    %ax
         stc
-        movb    sdcard_alive, %al
+        movb    %ds:sdcard_alive, %al
         orb     %al, %al
         jz      1f
         clc
@@ -209,7 +209,7 @@ sd_init:
         mov     %ax, %es
 
         movb    $0x55, %al
-        movb    %al, sdcard_alive   # first mark the card as alive
+        movb    %al, %ds:sdcard_alive   # first mark the card as alive
 
         call    sd_hwdet
         jc      5f                  # card not present, skip init
@@ -283,12 +283,12 @@ sd_init:
         movb    %es:0x07(%di), %al
         rol     $1, %ax
         rol     $1, %ax
-        mov     %ax, sdcard_blocks_lo
+        mov     %ax, %ds:sdcard_blocks_lo
 # --- extract READ_BL_LEN
         movb    %es:0x05(%di), %cl
         andb    $0x0F, %cl          # lowest 4 bits
         xor     %ch, %ch
-        movw    %cx, sdcard_block_to_byte
+        movw    %cx, %ds:sdcard_block_to_byte
 # --- extract C_SIZE_MULT
         movb    %es:0x09(%di), %al
         andb    $0x03, %al          # lowest 2 bits
@@ -302,11 +302,11 @@ sd_init:
         mov     $0x0001, %ax
         shl     %cl, %ax
         mov     %ax, %cx
-        mov     sdcard_blocks_lo, %ax
+        mov     %ds:sdcard_blocks_lo, %ax
         inc     %ax                 # ((size + 1)* mult * bytes)
         mul     %cx
-        mov     %ax, sdcard_blocks_lo
-        mov     %dx, sdcard_blocks_hi
+        mov     %ax, %ds:sdcard_blocks_lo
+        mov     %dx, %ds:sdcard_blocks_hi
 
         clc
 5:
@@ -332,7 +332,7 @@ sd_read_block:
         push    %dx
 
         movw    %cx, %ax
-        movw    sdcard_block_to_byte, %cx
+        movw    %ds:sdcard_block_to_byte, %cx
 1:
         shl     %ax                 # uppermost bit goes to carry
         rcl     %dx                 # lowest bit comes from the carry
@@ -347,7 +347,7 @@ sd_read_block:
         orb     %al, %al
         stc
         jnz     2f                  # 0x00 response, OK
-        movw    sdcard_block_to_byte, %cx
+        movw    %ds:sdcard_block_to_byte, %cx
         mov     $0x0001, %ax
         shl     %cl, %ax
         mov     %ax, %cx

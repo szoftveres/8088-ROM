@@ -8,6 +8,8 @@
         popf
 .endm
 
+# This code prepares the interrupt handler address in stack, and executes
+# a 'ret', which in turn jumps into this handler
 
 # flags
 # CS
@@ -17,43 +19,38 @@
 # <optional: int number>
 # return address from handler
 # handler address
-# %ax
 
-
-.macro  INTERRUPT_DISPATCH      dispatch_table:req, num:req
-        push    %bp
-        push    %ds
+.macro  IRQ_DISPATCH      dispatch_table:req, num:req
+        push    %bp                         # <- bp
+        push    %ds                         # <- ds
         mov     $DSEG, %bp
         mov     %bp, %ds
-        .ifnb   \num
-            movw    $\num, %bp              # interrupt number
-            push    %bp
-        .endif
-        movw    $1f, %bp                # return address
+    .ifnb   \num
+        movw    $\num, %bp              # interrupt number
         push    %bp
-        push    %bp                     # space for the handler address
-        push    %ax
-        mov     %ah, %al
-        shl     %ax
-        xorb    %ah, %ah
-        movw    %ax, %bp                # offset in %bp
-        movw    %cs:\dispatch_table(%bp), %ax
-        movw    %sp, %bp
-        movw    %ax, %ss:2(%bp)
-#         movw    %ss:10(%bp), %bp        # temporarily restore original bp
+    .endif
+        movw    $1f, %bp                # 
+        push    %bp                     # return address
+        push    %ax                     # preserving ax
+        mov     %ah, %al                # service number to AL
+        shl     %ax                     # converting to even number offset
+        xorb    %ah, %ah                # zero out AH
+        movw    %ax, %bp                # offset to %bp
+        movw    %cs:\dispatch_table(%bp), %bp # load handler address
         pop     %ax
+        push    %bp                     # handler address to stack
         ret                             # call the handler (address in stack)
 1:
-        .ifnb   \num
-            pop     %bp                     # clean up int number
-        .endif
+    .ifnb   \num
+        pop     %bp                     # clean up int number
+    .endif
+        movw    %sp, %bp
         push    %ax
         pushf
         pop     %ax
         andw    $0x0001, %ax            # carry set?
-        movw    %sp, %bp
         andw    $0xFFFE, %ss:8(%bp)     # First zero out carry
-        orw     %ax, %ss:8(%bp)         # Then set it if needed
+        orw     %ax, %ss:8(%bp)         # Copy carry flag
         pop     %ax
         pop     %ds
         pop     %bp
@@ -105,54 +102,29 @@ int_table:
         .word   int_dummy       # INT 0E - IRQ6
         .word   int_uart        # INT 0F - IRQ7 - UART
         .word   int_10h         # INT 10 - character output
-        .word   int_11h         # INT 11
+        .word   int_11h         # INT 11 - equipment list
         .word   int_12h         # INT 12 - return RAM size
         .word   int_13h         # INT 13 - disk ops
-        .word   int_14h         # INT 14
-        .word   int_15h         # INT 15
+        .word   int_14h         # INT 14 - serial port (not available)
+        .word   int_15h         # INT 15 - misc system services
         .word   int_16h         # INT 16 - character input
-        .word   int_17h         # INT 17
-        .word   int_18h         # INT 18
-        .word   int_19h         # INT 19
-        .word   int_bad         # INT 1A
-        .word   int_bad         # INT 1B
+        .word   int_17h         # INT 17 - printer 
+        .word   int_18h         # INT 18 - load basic
+        .word   int_19h         # INT 19 - load OS
+        .word   int_bad         # INT 1A - Real time clock / PCI
+        .word   int_bad         # INT 1B - Ctrl+Brk
         .word   int_dummy       # INT 1C - user timer tick
-        .word   int_bad         # INT 1D
-        .word   int_bad         # INT 1E
-        .word   int_bad         # INT 1F
+        .word   int_bad         # INT 1D - VPT pointer
+        .word   int_bad         # INT 1E - DPT pointer
+        .word   int_bad         # INT 1F - VGCT pointer
 
 int_dummy:
+        clc
         iret
 
 int_bad:
+        clc
         iret
-
-##################################################
-
-pic_init:
-        push    %ax
-
-        movb    $0x13, %al          # ICW1 - edge triggered, single, ICW4
-        outb    %al, $PIC_BASE+0
-        movb    $0x08, %al          # ICW2 - interrupt vector offset = 8
-        outb    %al, $PIC_BASE+1
-        movb    $0x01, %al          # ICW4 - non buffered mode, 8086/8088
-        outb    %al, $PIC_BASE+1
-
-        movb    $0x4F, %al          # OCW1: unmask UART and timer
-        outb    %al, $PIC_BASE+1
-
-        pop     %ax
-        ret
-
-##################################################
-
-pic_eoi:
-        push    %ax
-        movb    $0x20, %al
-        outb    %al, $PIC_BASE+0
-        pop     %ax
-        ret
 
 ##################################################
 # dummy handlers
@@ -192,7 +164,7 @@ text_int_dbg2:
 # INT 10 -- video services
 
 int_10h:
-        INTERRUPT_DISPATCH int_10_dispatch, 0x10
+        IRQ_DISPATCH int_10_dispatch, 0x10
         iret
 
 int_10_dispatch:
@@ -204,6 +176,7 @@ int_10_dispatch:
         .word   int_dbg         # 0x05
         .word   int_dbg         # 0x06
         .word   int_dbg         # 0x07
+
         .word   int_dbg         # 0x08
         .word   int_10_09       # 0x09
         .word   int_10_0A       # 0x0A
@@ -212,6 +185,24 @@ int_10_dispatch:
         .word   int_dbg         # 0x0D
         .word   uart_send_byte  # 0x0E
         .word   int_dbg         # 0x0F
+
+        .word   int_dbg         # 0x10
+        .word   int_dbg         # 0x11
+        .word   int_dbg         # 0x12
+        .word   int_10_13       # 0x13
+        .word   int_dbg         # 0x14
+        .word   int_dbg         # 0x15
+        .word   int_dbg         # 0x16
+        .word   int_dbg         # 0x17
+
+        .word   int_dbg         # 0x18
+        .word   int_dbg         # 0x19
+        .word   int_dbg         # 0x1A
+        .word   int_dbg         # 0x1B
+        .word   int_dbg         # 0x1C
+        .word   int_dbg         # 0x1D
+        .word   int_dbg         # 0x1E
+        .word   int_dbg         # 0x1F
 
 int_10_03:
         xor     %cx, %cx
@@ -233,13 +224,31 @@ int_10_0A:
         clc
         ret
 
+int_10_13:
+        push    %ax
+        push    %cx
+        push    %bp
+        push    %di
+1:
+        movb    %es:(%di), %al
+        inc     %di
+        call    uart_send_byte
+        loop    1b
+
+        pop     %di
+        pop     %bp
+        pop     %cx
+        pop     %ax
+        clc
+        ret
+
 ##################################################
 
 # INT 11 -- return equipment list
 # ax: result
 
 int_11h:
-        movw    $0x0001, %ax    # nobody gets jealous of this config for sure
+        movw    $0x0101, %ax    # nobody gets jealous of this config for sure
         iret
 
 ##################################################
@@ -259,6 +268,8 @@ int_12h:
         jnz     1f
         cmpw    $0x5AA5, %dx
         jnz     1f
+        xorw    %cx, %cx
+        xorw    %dx, %dx
         jmp     2f
 1:
         cmpw    $640, %ax       # don't report more than 640k
@@ -274,7 +285,7 @@ int_12h:
 # INT 13 -- disk services
 
 int_13h:
-        INTERRUPT_DISPATCH int_13_dispatch, 0x13
+        IRQ_DISPATCH int_13_dispatch, 0x13
         iret
 
 int_13_01:
@@ -336,7 +347,7 @@ int_13_dispatch:
 # INT 14 -- serial port services
 
 int_14h:
-        INTERRUPT_DISPATCH int_unimplemented_dispatch, 0x14
+        IRQ_DISPATCH int_unimplemented_dispatch, 0x14
         iret
 
 ##################################################
@@ -344,7 +355,7 @@ int_14h:
 # INT 15 -- misc services
 
 int_15h:
-        INTERRUPT_DISPATCH int_unimplemented_dispatch, 0x15
+        IRQ_DISPATCH int_unimplemented_dispatch, 0x15
         iret
 
 ##################################################
@@ -385,7 +396,7 @@ int_16h:
 # INT 17 -- printer services
 
 int_17h:
-        INTERRUPT_DISPATCH int_unimplemented_dispatch, 0x17
+        IRQ_DISPATCH int_unimplemented_dispatch, 0x17
         iret
 
 ##################################################
@@ -435,6 +446,7 @@ int_unimplemented_dispatch:
         .word   int_dbg                 # 0x05
         .word   int_dbg                 # 0x06
         .word   int_dbg                 # 0x07
+
         .word   int_dbg                 # 0x08
         .word   int_dbg                 # 0x09
         .word   int_dbg                 # 0x0A
@@ -444,20 +456,21 @@ int_unimplemented_dispatch:
         .word   int_dbg                 # 0x0E
         .word   int_dbg                 # 0x0F
 
-        .word   int_dbg                 # 0x00
-        .word   int_dbg                 # 0x01
-        .word   int_dbg                 # 0x02
-        .word   int_dbg                 # 0x03
-        .word   int_dbg                 # 0x04
-        .word   int_dbg                 # 0x05
-        .word   int_dbg                 # 0x06
-        .word   int_dbg                 # 0x07
-        .word   int_dbg                 # 0x08
-        .word   int_dbg                 # 0x09
-        .word   int_dbg                 # 0x0A
-        .word   int_dbg                 # 0x0B
-        .word   int_dbg                 # 0x0C
-        .word   int_dbg                 # 0x0D
-        .word   int_dbg                 # 0x0E
-        .word   int_dbg                 # 0x0F
+        .word   int_dbg                 # 0x10
+        .word   int_dbg                 # 0x11
+        .word   int_dbg                 # 0x12
+        .word   int_dbg                 # 0x13
+        .word   int_dbg                 # 0x14
+        .word   int_dbg                 # 0x15
+        .word   int_dbg                 # 0x16
+        .word   int_dbg                 # 0x17
+
+        .word   int_dbg                 # 0x18
+        .word   int_dbg                 # 0x19
+        .word   int_dbg                 # 0x1A
+        .word   int_dbg                 # 0x1B
+        .word   int_dbg                 # 0x1C
+        .word   int_dbg                 # 0x1D
+        .word   int_dbg                 # 0x1E
+        .word   int_dbg                 # 0x1F
 

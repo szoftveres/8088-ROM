@@ -43,5 +43,5 @@ elf: date $(OBJECTS)
 
 
 clean:
-	-rm -rf $(OBJECTS) $(OBJDIR)/$(PROGRAM).elf $(OBJDIR)/$(PROGRAM).bin
+	-rm -rf $(OBJECTS) $(OBJDIR)/$(PROGRAM).elf $(OBJDIR)/$(PROGRAM).bin $(OBJDIR)/$(PROGRAM).objdump
 
