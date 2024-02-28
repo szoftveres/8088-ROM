@@ -2,6 +2,7 @@
 8088 single-board computer and ROM BIOS
 
 ![image small x86](pcb.png)
+![pcbd](pcbd.png)
 ![image board3](board3.jpg)
 
 
