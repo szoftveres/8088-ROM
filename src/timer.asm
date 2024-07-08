@@ -12,6 +12,9 @@
 .local timer_hours
 .comm timer_hours, 2, 2
 
+.local ledctr
+.comm ledctr, 2, 2
+
 .section .text
 ##################################################
 
@@ -32,7 +35,6 @@ int_timer_2hz:
         mov     $DSEG, %ax
         mov     %ax, %ds
 
-        call    led_flip
         decb    (timer_1hz)
         jnz     9f
         movb    $2, (timer_1hz)
@@ -66,6 +68,25 @@ int_timer_32hz:
         iret
 
 
+int_usr_timer:
+        push    %ax
+        push    %ds
+        mov     $DSEG, %ax
+        mov     %ax, %ds
+        movb    (ledctr), %al
+        inc     %al
+        andb    $0x3F, %al
+        jnz     1f
+        call    led_on
+        jmp     2f
+1:
+        call    led_off
+2:
+        movb    %al, (ledctr)
+        pop     %ds
+        pop     %ax
+        iret
+
 print_clock:
         push    %ax
         push    %si
@@ -79,7 +100,7 @@ print_clock:
         PRINT_CHAR  $':'
         movw    (timer_seconds), %ax
         call    print_dec16
-        PRINT_CHAR  $'\n'
+        NEWLINE
         pop     %si
         pop     %ax
         ret

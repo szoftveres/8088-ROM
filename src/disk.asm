@@ -36,6 +36,8 @@
 .comm disk_buffer, 512, 2
 
 # --- Partition table, 16 bytes
+.local local_partition_table
+local_partition_table:
 
 .local partition_status
 .comm partition_status, 1, 1
@@ -111,6 +113,7 @@ dpt_1440:
     .byte   0x02        # heads (2)
 
 ##################################################
+# ds must be set up to point to the variables
 # %si: DPT
 
 disk_init:
@@ -118,7 +121,7 @@ disk_init:
         push    %di
         push    %es             # save ES
 # --- set up DPT in int 1Eh
-        movw    $BOOTSEG, %di
+        movw    $ZEROSEG, %di
         movw    %di, %es
         movw    $0x0078, %di    # int 0x1E vector, L
         movw    %si, %es:(%di)
@@ -127,11 +130,11 @@ disk_init:
 # --- set up our own params
         xor     %ax, %ax
         movb    %cs:0x0c(%si), %al      # heads
-        movw    %ax, disk_heads
+        movw    %ax, %ds:disk_heads
         movb    %cs:0x0b(%si), %al      # cylinders
-        movw    %ax, disk_cylinders
+        movw    %ax, %ds:disk_cylinders
         movb    %cs:0x04(%si), %al      # sectors
-        movw    %ax, disk_sectors
+        movw    %ax, %ds:disk_sectors
 
         pop     %es             # restore ES
         pop     %di
@@ -139,7 +142,7 @@ disk_init:
         ret
 
 ##################################################
-# ds must be set up
+# ds must be set up to point to the variables
 # cx: cylinder + sector  (in INT13h format)
 # dh: head
 # cx: result
@@ -161,13 +164,13 @@ disk_chs_to_lba:
         and     $0x03, %ah
         movb    %ch, %al            # we have the cylinder
 
-        mov     disk_heads, %cx     # nHeads
+        mov     %ds:disk_heads, %cx     # nHeads
         mul     %cx                 # (Cyl × nHeads)
 
         pop     %cx                 # Head
         add     %cx, %ax            # ((Cyl × nHeads) + Head)
         
-        mov     disk_sectors, %cx   # nSects
+        mov     %ds:disk_sectors, %cx   # nSects
         mul     %cx                 # (((Cyl × nHeads) + Head) × nSects)
 
         pop     %cx                 # (Sect − 1)
@@ -181,6 +184,7 @@ disk_chs_to_lba:
 
 ##################################################
 # int 13h 02 handler
+# ds must be set up to point to the variables (IRQ_DISPATCH does that)
 
 disk_read_chs:
         push    %ax
@@ -201,7 +205,7 @@ disk_read_chs:
 # -- end debug --
 
         call    disk_chs_to_lba                 # get the sector num
-        addw    partition_offset_lba_lo, %cx    # start offset
+        addw    %ds:partition_offset_lba_lo, %cx    # start offset
 
         mov     %bx, %di                        # es:(di) buffer
 1:
@@ -251,17 +255,17 @@ disk_reset:
         mov     $DSEG, %cx
         mov     %cx, %es
 
-        movw    (sdcard_block_to_byte), %ax
+        movw    %ds:(sdcard_block_to_byte), %ax
         cmpw    $0x0009, %ax
         movb    $0xAA, %ah                  # SDcard block size is not 512
         stc
         jnz     9f
 
-# --- load the MBR to 7C00
+# --- load the MBR
         mov     $disk_buffer, %di
         mov     $0x0000, %cx
         mov     $0x0000, %dx
-        call    sd_read_block
+        call    sd_read_block               # into %es:(%di)
         movb    $0xAA, %ah                  # Cannot read MBR
         jc      9f
 
@@ -270,7 +274,7 @@ disk_reset:
         movb    $0xAA, %ah                  # MBR signature mismatch
         stc
         jnz     9f
-# --- extract the partiton table
+# --- extract the partiton table from the disk buffer into 'partition status'
         movw    $0x0010, %cx                # one partition entry, 16 bytes
         movw    $(disk_buffer + 446), %si   # 446 bytes
         movw    $partition_status, %di
@@ -281,33 +285,33 @@ disk_reset:
         inc     %di
         loop    1b
 # --- check if partition is bootable
-        movb    partition_status, %al
+        movb    %ds:partition_status, %al
         cmpb    $0x80, %al
         movb    $0xAA, %ah                  # First partition isn't active
         stc
         jnz     9f
 # --- check partition size and select disk parameters
-        movw    partition_total_sects_hi, %ax
+        movw    %ds:partition_total_sects_hi, %ax
         or      %ax, %ax
         movb    $0xAA, %ah                  # Incompatible partition size
         stc
         jnz     9f
 
-        movw    partition_total_sects_lo, %ax
+        movw    %ds:partition_total_sects_lo, %ax
         cmpw    $0x0B40, %ax                # 2880(0x0B40) x 512 = 1.44Mb
         jnz     1f
         mov     $dpt_1440, %si
         call    disk_init
         jmp     2f
 1:
-        movw    partition_total_sects_lo, %ax
+        movw    %ds:partition_total_sects_lo, %ax
         cmpw    $0x0960, %ax                # 2400(0x0960) x 512 = 1.2Mb
         jnz     1f
         mov     $dpt_1200, %si
         call    disk_init
         jmp     2f
 1:
-        movw    partition_total_sects_lo, %ax
+        movw    %ds:partition_total_sects_lo, %ax
         cmpw    $0x02D0, %ax                # 720(0x0@D0) x 512 = 360kb
         jnz     1f
         mov     $dpt_360, %si
@@ -316,7 +320,7 @@ disk_reset:
 1:
         movb    $0xAA, %ah                  # Unrecognized partition size
         stc
-        jnz     9f
+        jmp     9f
 2:
         movb    $0x00, %ah                  # All good
         clc
@@ -335,13 +339,13 @@ ipl:
         push    %dx
         push    %es
         push    %di
-        mov     $BOOTSEG, %cx
+        mov     $ZEROSEG, %cx
         mov     %cx, %es
 
 # --- load the boot sector of the first partition to 7C00
         mov     $BOOTADDR, %di
-        mov     partition_offset_lba_lo, %cx
-        mov     partition_offset_lba_hi, %dx
+        mov     %ds:partition_offset_lba_lo, %cx
+        mov     %ds:partition_offset_lba_hi, %dx
 
         call    sd_read_block
         movw    $text_ipl_sdcard, %ax

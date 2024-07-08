@@ -12,9 +12,6 @@
 ##################################################
 .section .bss
 
-.local sdcard_alive
-.comm sdcard_alive, 1, 2
-
 .local sdcard_blocks_lo                 # number of total blocks
 .comm sdcard_blocks_lo, 2, 2
 .local sdcard_blocks_hi
@@ -27,41 +24,6 @@
 .comm sdcard_init_data, 16, 2
 
 .section .text
-##################################################
-sd_system_init:
-        push    %ax
-        movb    $0x00, %al
-        movb    %al, %ds:sdcard_alive
-        pop     %ax
-        ret
-
-##################################################
-# carry: error (carry is the input actually)
-
-sd_mark_state:
-        pushf
-        push    %ax
-        jnc     1f
-        movb    $0x00, %al
-        movb    %al, %ds:sdcard_alive
-1:
-        pop     %ax
-        popf
-        ret
-
-##################################################
-# carry: not alive
-
-sd_check_state:
-        push    %ax
-        stc
-        movb    %ds:sdcard_alive, %al
-        orb     %al, %al
-        jz      1f
-        clc
-1:
-        pop     %ax
-        ret
 
 ##################################################
 sd_delay:
@@ -90,7 +52,7 @@ sd_dummy_clocks:
         ret
 
 ##################################################
-# carry: card not present
+# carry set: card not present
 
 sd_hwdet:
         push    %ax
@@ -144,7 +106,7 @@ sd_command:
 ##################################################
 # es:(di)     buffer
 # cx: bytes to read (not including 2 bytes of CRC)
-# carry: error
+# carry set: error
 
 sd_read_data:
         push    %ax
@@ -164,9 +126,11 @@ sd_read_data:
         jz      9f                  # Error token received, bail
         call    sd_delay
         loop    1b
+        stc
+        jmp     9f
 2:        
         pop     %cx
-        push    %cx                 # number of bytes into %cx
+        push    %cx                 # pop number of bytes into %cx
 3:
         movb    $0xFF, %al
         call    spi_transfer
@@ -182,7 +146,6 @@ sd_read_data:
         call    sd_delay
         clc
 9:
-        call    sd_mark_state
         pop     %cx
         pop     %di
         pop     %bx
@@ -192,7 +155,6 @@ sd_read_data:
 
 ##################################################
 # huge function: initializes the card and gets its size
-# uses 0000:7C00 as a buffer
 # carry: error
 
 sd_init:
@@ -203,16 +165,12 @@ sd_init:
         push    %es
         push    %di
 
-        mov     $sdcard_init_data, %di
         mov     $DSEG, %ax
         mov     %ax, %ds
         mov     %ax, %es
 
-        movb    $0x55, %al
-        movb    %al, %ds:sdcard_alive   # first mark the card as alive
-
         call    sd_hwdet
-        jc      5f                  # card not present, skip init
+        jc      9f                  # card not present, skip init
 
 # --- send IDLE command 
         call    sd_dummy_clocks
@@ -233,11 +191,11 @@ sd_init:
         call    sd_delay
         loop    1b
         stc
-        jmp     5f                  # bail on error
+        jmp     9f                  # bail on error
 2:
 # --- send init command
         call    sd_dummy_clocks
-        mov     $0x1000, %cx        # many retries, this can take a long time
+        mov     $0x0100, %cx        # many retries, this can take a long time
 3:
         push    %cx
         call    spi_assert
@@ -264,14 +222,15 @@ sd_init:
         call    sd_command
         orb     %al, %al
         stc
-        jnz     5f                  # bail if response is not OK (0x00)
+        jnz     9f                  # bail if response is not OK (0x00)
 # --- read data
         call    sd_delay
         mov     $DSEG, %cx
         mov     %cx, %es
+        mov     $sdcard_init_data, %di
         mov     $0x0010, %cx        # 16 bytes
-        call    sd_read_data
-        jc      5f
+        call    sd_read_data        # into es:(di)
+        jc      9f
         call    spi_deassert
 
 # --- extract C_SIZE
@@ -309,9 +268,10 @@ sd_init:
         mov     %dx, %ds:sdcard_blocks_hi
 
         clc
-5:
-        call    sd_mark_state
+9:
+        pushf
         call    spi_deassert
+        popf
         pop     %di
         pop     %es
         pop     %ds
@@ -353,8 +313,9 @@ sd_read_block:
         mov     %ax, %cx
         call    sd_read_data
 2:
-        call    sd_mark_state
+        pushf
         call    spi_deassert
+        popf
         pop     %dx
         pop     %cx
         pop     %ax

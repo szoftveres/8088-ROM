@@ -15,6 +15,11 @@ echo $newseg > lastseg
 echo
 echo "ES : ${newseg}"
 
+# Get back to te main menu
+echo "x" >> /dev/ttyUSB0
+sleep 1
+
+
 echo -n "e" >> /dev/ttyUSB0
 echo -n "${newseg}" >> /dev/ttyUSB0
 

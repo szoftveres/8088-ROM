@@ -87,7 +87,7 @@ uart_type:
 9:
         movw    %ax, %si
         call    print_str_cs
-        PRINT_CHAR  $'\n'
+        NEWLINE
 
         pop     %ax
         pop     %si

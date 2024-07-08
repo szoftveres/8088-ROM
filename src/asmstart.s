@@ -22,7 +22,7 @@
 .equ    DSEG,               0x0040   # used to be 0040
 
 # Boot sector load address
-.equ    BOOTSEG,        0x0000
+.equ    ZEROSEG,        0x0000
 .equ    BOOTADDR,       0x7C00
 
 # BIOS 
@@ -229,7 +229,6 @@ startover:
         sti
         call    uart_init
         call    spi_init
-        call    sd_system_init
         call    sd_init
 
 ##################################################
@@ -238,266 +237,32 @@ startover:
         call    print_banner
         call    uart_type
 
-##################################################
-
-main_help:
-        call    print_clock
-        movw    $main_help_text, %si
-        call    print_str_cs
-        call    print_seginfo
-
-mainloop:
-        GET_CHAR
-
-        cmp     $'d', %al
-        jnz     1f
-        call    main_dump
-        jmp     2f              # help
-1:
-        cmp     $'e', %al
-        jnz     1f
-        call    main_eseg_chg
-        jmp     2f              # help
-1:
-        cmp     $'c', %al
-        jnz     1f
-        call    main_cpy
-        jmp     2f              # help
-1:
-        cmp     $'r', %al
-        jnz     1f
-        call    main_recv
-        jmp     2f              # help
-1:
-        cmp     $'g', %al
-        jnz     1f
-        call    main_jmp
-        jmp     2f              # help
-1:
-        cmp     $'s', %al
-        jnz     1f
-        call    main_flash
-        jmp     2f              # help
-1:
-        cmp     $'b', %al
-        jnz     1f
-        call    main_boot
-        jmp     2f              # help
-1:
-        cmp     $'w', %al
-        jnz     1f
-        call    main_warmboot
-        jmp     2f              # help
-1:
-        cmp     $'\n', %al
-        jnz     1f
-        jmp     2f              # help
-1:
-        cmp     $'\r', %al
-        jnz     1f
-        jmp     2f              # help
-1:
-        jmp     3f
-2:
-        call    print_regs
-        jmp     main_help
-3:
-        jmp     mainloop
-
-main_help_text:
-        .ascii "\n  [nl] : help\n"
-        .ascii   "     e : set ES\n"
-        .ascii   "     d : memdump [ES:<start>]\n"
-        .ascii   "     r : receive to [ES:0000]\n"
-        .ascii   "     c : copy [<seg>:0000] to [ES:0000]\n"
-        .ascii   "     s : burn [ES:0000] to ROM [F000:0000]\n"
-        .ascii   "     g : execute at [ES:0000]\n"
-        .ascii   "     b : boot [0000:7C00]\n"
-        .ascii   "     w : warm boot on next reset\n"
-        .asciz   "\n"
 
 ##################################################
-
-main_dump:
-        movw    $text_main_dump_start, %si
-        call    print_str_cs
-        call    get_h16
-        jc      2f
-        push    %ax
-        movw    $text_main_dump_help, %si
-        call    print_str_cs
-main_dump_loop:
-
-        mov     $0x10, %cx              # 16 lines
 1:
-        pop     %ax
-        mov     %ax, %si
-        add     $0x10, %ax
-        push    %ax
-        call    dump_mem_line
-        loop    1b
-
-        GET_CHAR
-        cmp     $'\n', %al
-        jz      main_dump_loop
-        cmp     $'\r', %al
-        jz      main_dump_loop
-        pop     %ax
-2:
-        ret
-
-text_main_dump_start:
-        .asciz  "\nstart>"
-text_main_dump_help:
-        .ascii "\n  [nl] : continue\n"
-        .asciz   " [any] : end\n\n"
-
-##################################################
-main_recv:
-        movw    $text_main_recv, %si
-        call    print_str_cs
-        call    led_on
-        mov     $0x0000, %di
-        mov     $0x1000, %cx        # progress line
-main_recv_loop:
-        GET_CHAR %es:(%di)
-        dec     %cx
-        jnz     1f
-        mov     $0x1000, %cx        # progress line
-        PRINT_CHAR $'#'
-1:
-        inc     %di
-        jnz     main_recv_loop
-        PRINT_CHAR $'\n'
-        call    led_off
-        ret
-
-text_main_recv:
-        .ascii  "\nreceiving\n"
-        .asciz  "\________________\n"
-
-##################################################
-
-main_eseg_chg:
-        PRINT_CHAR $'>'
-        call    get_h16
-        jc      1f
-        movw    %ax, %es
-1:
-        ret
-
-##################################################
-
-main_flash:
-        PRINT_CHAR $'\n'
-        call    flash_unlock
-        call    erase_seg
-        jc      1f
-        call    byte_program_seg
-        jc      1f
-        call    verify_seg
-1:
-        call    flash_lock
-        ret
-
-##################################################
-
-main_boot:
-
-        movw    $0x0000, %ax
-        int     $0x13           # reset disk
-        jc      2f
-        call    ipl
-        jnc     1f
-2:
-        mov     %ax, %si
-        call    print_str_cs
-        ret
-1:
-        mov     $BOOTSEG, %ax
-        mov     %ax, %es
-        mov     %ax, %ds
-        jmp     $BOOTSEG,$BOOTADDR
-
-##################################################
-
-main_warmboot:
-        movw    $WARMBOOT_REQUEST, %ax
-        movw    %ax, warmboot_request
-        PRINT_CHAR $'\n'
-        ret
-
-##################################################
-
-main_cpy:
-        PRINT_CHAR $'>'
-        call    get_h16
-        jc      1f
-
-        push    %ds
-        mov     %ax, %ds
-        cld
-        movw    $0x8000, %cx    # 32k Words == 64k bytes
-        movw    $0x0000, %si
-        movw    $0x0000, %di
-        rep movsw
-
-        pop     %ds        
-1:
-        ret
-##################################################
-
-main_jmp:
-        PRINT_CHAR $'\n'
-
-        push    %ds                     # save regs
-        push    %es                     # save regs
-
-        mov     %es, %ax
-        mov     %ax, %ds                # Set new %ds
-
-        push    %cs                     # return address
-        mov     $main_jmp_ret, %ax
-        push    %ax
-
-        mov     %es, %ax                # start address seg
-        push    %ax
-        mov     $0x0000, %ax
-        push    %ax                     # start address offset
-
-        lret
-main_jmp_ret:
-        pop     %es
-        pop     %ds
-        mov     $text_jmp_ret, %si
-        call    print_str_cs
-        call    print_h16
-        PRINT_CHAR $'\n'
-        ret
-
-text_jmp_ret:
-        .asciz  "\n::"
+        call    main_help       # Going to the main menu
+        jmp     1b
 
 ##################################################
 
 print_banner:
-        PRINT_CHAR $'\n'
+        NEWLINE
         movw    $text_banner, %si
         call    print_str_cs
-        PRINT_CHAR $'\n'
+        NEWLINE
 
         movw    $text_rom, %si          # ROM date
         call    print_str_cs
         movw    $text_romdate, %si
         call    print_str_cs
-        PRINT_CHAR $'\n'
+        NEWLINE
 
         movw    $text_cpu, %si          # CPU type
         call    print_str_cs
         call    cpu_id
         mov     %ax, %si
         call    print_str_cs
-        PRINT_CHAR $'\n'
+        NEWLINE
 
         movw    $text_maxram, %si       # max RAM
         call    print_str_cs
@@ -508,7 +273,7 @@ print_banner:
 
         call    print_dec16
         PRINT_CHAR $'k'
-        PRINT_CHAR $'\n'
+        NEWLINE
 
         ret
 
@@ -529,18 +294,20 @@ text_maxram:
 
 ##################################################
 
-.include    "src/i8259.inc"
-.include    "src/int.inc"
-.include    "src/uart.inc"
-.include    "src/timer.inc"
-.include    "src/string.inc"
-.include    "src/led.inc"
-.include    "src/spi.inc"
-.include    "src/sd.inc"
-.include    "src/disk.inc"
-.include    "src/cpu.inc"
-.include    "src/misc.inc"
-.include    "src/flash.inc"
+.include    "src/mainmenu.asm"
+.include    "src/diskmenu.asm"
+.include    "src/i8259.asm"
+.include    "src/int.asm"
+.include    "src/uart.asm"
+.include    "src/timer.asm"
+.include    "src/string.asm"
+.include    "src/led.asm"
+.include    "src/spi.asm"
+.include    "src/sd.asm"
+.include    "src/disk.asm"
+.include    "src/cpu.asm"
+.include    "src/misc.asm"
+.include    "src/flash.asm"
 
 # ==== CPU cold start ====
 

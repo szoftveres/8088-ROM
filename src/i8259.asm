@@ -17,6 +17,24 @@ pic_init:
         pop     %ax
         ret
 
+pic_disable_timers:
+        push    %ax
+        inb     $PIC_BASE+1, %al
+        orb     $0x7F, %al
+        outb    %al, $PIC_BASE+1
+        pop     %ax
+        ret
+
+pic_enable_timers:
+        push    %ax
+        inb     $PIC_BASE+1, %al
+        andb    $0xCF, %al
+        outb    %al, $PIC_BASE+1
+        pop     %ax
+        ret
+
+##################################################
+
 ##################################################
 
 pic_eoi:

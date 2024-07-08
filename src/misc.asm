@@ -46,7 +46,7 @@ dump_mline_loop2_direct:
         loop    dump_mline_loop2
 
         PRINT_CHAR $'|'
-        PRINT_CHAR $'\n'
+        NEWLINE
 
         pop     %si
         pop     %cx
@@ -79,7 +79,7 @@ print_seginfo:
         movw    %sp, %ax
         call    print_h16
 
-        PRINT_CHAR $'\n'
+        NEWLINE
         ret
 
 text_CS:
@@ -147,7 +147,7 @@ print_regs:
         pop     %ax
         call    print_h16
 
-        PRINT_CHAR $'\n'
+        NEWLINE
 
         pop     %si
         pop     %ax

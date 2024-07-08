@@ -24,3 +24,5 @@ F000:0000 - F000:FFFF
 ## Toolchain
 https://sourcery.mentor.com/GNUToolchain/release3298
 
+minipro -p SST39SF010A -w ./minipro.bin
+

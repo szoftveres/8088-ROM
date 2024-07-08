@@ -66,7 +66,7 @@ int_init:
 
         push    %cs
         pop     %ds
-        mov     $BOOTSEG, %di
+        mov     $ZEROSEG, %di    # interrupt vectors are at the very start
         mov     %di, %es
         mov     $int_table, %si
         mov     $0x20, %cx      # 32 Interrupt vectors
@@ -113,7 +113,7 @@ int_table:
         .word   int_19h         # INT 19 - load OS
         .word   int_bad         # INT 1A - Real time clock / PCI
         .word   int_bad         # INT 1B - Ctrl+Brk
-        .word   int_dummy       # INT 1C - user timer tick
+        .word   int_usr_timer   # INT 1C - user timer tick
         .word   int_bad         # INT 1D - VPT pointer
         .word   int_bad         # INT 1E - DPT pointer
         .word   int_bad         # INT 1F - VGCT pointer

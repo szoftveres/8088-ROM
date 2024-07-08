@@ -253,7 +253,7 @@ erase_seg_loop:
         add     $FLASH_SECT_SIZE, %di
         jnz     erase_seg_loop
 
-        PRINT_CHAR $'\n'
+        NEWLINE
 
         clc
 1:
@@ -285,7 +285,7 @@ byte_program_seg_loop:
         or      %di, %di                # di is auto-incremented
         jnz     byte_program_seg_loop
 
-        PRINT_CHAR $'\n'
+        NEWLINE
 
         clc
 1:
@@ -317,7 +317,7 @@ verify_seg_loop:
         inc     %di
         jnz     verify_seg_loop
 
-        PRINT_CHAR $'\n'
+        NEWLINE
 
         clc
 1:

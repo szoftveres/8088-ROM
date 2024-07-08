@@ -13,5 +13,8 @@ SECTIONS
     *(.cpu_entry)
     }
   . = 0x0000;
-  .bss : { *(.bss) }
+  .bss : {
+    . = 0x0000;
+    *(.bss)
+  }
 }

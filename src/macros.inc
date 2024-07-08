@@ -5,10 +5,14 @@
 .macro  PRINT_CHAR      src
 
     .ifnb   \src
+        push    %ax
         movb    \src, %al
     .endif
         movb    $0x0E, %ah
         int     $0x10
+    .ifnb   \src
+        pop     %ax
+    .endif
 .endm
 
 ##################################################
@@ -24,5 +28,9 @@
 .endm
 
 ##################################################
-        
+
+.macro  NEWLINE
+    PRINT_CHAR $'\n'
+.endm
+
         

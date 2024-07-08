@@ -8,13 +8,14 @@ PROGRAM = rom
 CC = ia16-elf-gcc
 AS = ia16-elf-gcc
 LD = ia16-elf-gcc
-CFLAGS = -Wall -O0 -fno-PIC -funsigned-char -march=i8086 -mtune=i8086 -L/home/martonk/mgc/embedded/codebench/lib/gcc/ia16-elf/6.2.0 -lgcc
+CFLAGS = -Wall -O0 -fno-PIC -funsigned-char -nostdlib -ffreestanding -march=i8086 -mtune=i8086
 ASFLAGS = -march=i8086 -mtune=i8086
 LDFLAGS = -march=i8086 -mtune=i8086 -T ls.ld -L/home/martonk/mgc/embedded/codebench/lib/gcc/ia16-elf/6.2.0 -lgcc
 
 ## Objects that must be built in order to link
 ## XXX The order is important, asmstart MUST be the first one !!
 OBJECTS = $(OBJDIR)/asmstart.o      \
+          $(OBJDIR)/floppy.o      \
 
 
 ## Build both compiler and program
@@ -40,6 +41,9 @@ $(OBJDIR)/%.o : $(SRCDIR)/%.s
 
 elf: date $(OBJECTS)
 	$(LD) $(LDFLAGS) -o $(OBJDIR)/$(PROGRAM).elf $(OBJECTS)
+
+disassemble: elf
+	ia16-elf-objdump -M i8086 -D $(OBJDIR)/$(PROGRAM).elf | less
 
 
 clean:
