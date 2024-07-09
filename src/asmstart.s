@@ -1,5 +1,5 @@
 .code16
-.arch i8086  #,nojumps             # see documentation
+.arch i8086 #,nojumps             # see documentation
 
 # 0000:0000 - 0000:03FF   1kB  interrupt vectors
 # 0020:0200               SP on top of interrupt vectors
@@ -278,6 +278,9 @@ print_banner:
         ret
 
 
+lofasz:
+        ret
+
 text_banner:
         .ascii "                          __   __              ______   ________\n"
         .ascii "     ______ _____ _____  |  | |  |    ___  ___/  __  \\ /  _____/\n"
@@ -296,11 +299,11 @@ text_maxram:
 
 .include    "src/mainmenu.asm"
 .include    "src/diskmenu.asm"
+.include    "src/string.asm"
 .include    "src/i8259.asm"
 .include    "src/int.asm"
 .include    "src/uart.asm"
 .include    "src/timer.asm"
-.include    "src/string.asm"
 .include    "src/led.asm"
 .include    "src/spi.asm"
 .include    "src/sd.asm"

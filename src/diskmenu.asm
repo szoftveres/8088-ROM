@@ -1,3 +1,4 @@
+.global dump_rootdir
 
 diskmenu_help:
         NEWLINE
@@ -17,6 +18,11 @@ diskmenu_loop:
         cmp     $'r', %al
         jnz     1f
         call    disk_full_reset
+        jmp     2f              # help
+1:
+        cmp     $'d', %al
+        jnz     1f
+        call    dump_rootdir
         jmp     2f              # help
 1:
         cmp     $'x', %al
@@ -43,6 +49,7 @@ diskmenu_help_text:
         .ascii "\n  [nl] : disk menu help\n"
         .ascii   "     r : full disk system reset\n"
         .ascii   "     b : boot OS from mbr [0000:7C00]\n"
+        .ascii   "     d : dump rootdir\n"
         .ascii   "     x : <- back to main menu\n"
         .asciz   "\n"
 

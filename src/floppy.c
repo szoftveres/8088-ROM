@@ -1,4 +1,6 @@
 
+#include "cutils.h"
+
 #define SPT_144         (0x0012)
 #define HPC_144         (0x2)
 
@@ -58,14 +60,15 @@ typedef struct __attribute__((__packed__)) dir_entry_s {
 } dir_entry_t;
 
 
+char dir_buf[512];
+
 
 int disk_read_lba_144 (int lba, void* buf) {
     int c = lba / (HPC_144 * SPT_144);
     int h = (lba / SPT_144) % HPC_144;
     int s = (lba % SPT_144) + 1;
 
-    //XXX return bios_disk_read_chs(c, h, s, buf);
-    return 0;
+    return bios_disk_read_chs(c, h, s, buf);
 }
 
 
@@ -80,7 +83,6 @@ get_next_cluster (unsigned int cluster) {
     unsigned int b;
     int disk_rc;
     unsigned int lba;
-    char* buf;
 
     lba = FAT_TABLE_OFFSET + (cluster * 3 / (SECT_SIZE * 2));      /* sector to load */
     b = cluster * 3;
@@ -88,13 +90,15 @@ get_next_cluster (unsigned int cluster) {
     b = b / 2;              /* Mul by 1.5 */
     b %= SECT_SIZE;
 
-    buf = 0; //XXX = get_sect_buf(lba, &disk_rc);
 
-    cluster = *((unsigned int*)&buf[b]);
+    disk_read_lba_144(lba, dir_buf);
+
+    cluster = *((unsigned int*)&dir_buf[b]);
 
     if (b == SECT_SIZE - 1) {   /* Need to load the next sector too */
-        buf = 0; // XXX = get_sect_buf(lba + 1, &disk_rc);
-        cluster = (cluster & 0x00FF) | ((*((unsigned int*)&buf[-1])) & 0xFF00);
+        disk_read_lba_144(lba + 1 , dir_buf);
+        /* The -1 thing is addressing the 1st byte of the buffer as if it was the upper byte */
+        cluster = (cluster & 0x00FF) | ((*((unsigned int*)&dir_buf[-1])) & 0xFF00);
     }
 
     if (odd) {
@@ -107,20 +111,38 @@ get_next_cluster (unsigned int cluster) {
 
 
 
-/*
+
 dir_entry_t*
 get_direntry (int n) {
     char *buf;
     int disk_rc;
-    buf = get_sect_buf(ROOT_DIR_OFFSET + (n / (SECT_SIZE / sizeof(dir_entry_t))), &disk_rc);
-    return (dir_entry_t*)&buf[(n % (SECT_SIZE / sizeof(dir_entry_t))) * sizeof(dir_entry_t)];
+    unsigned int lba = ROOT_DIR_OFFSET + (n / (SECT_SIZE / sizeof(dir_entry_t)));
+    disk_read_lba_144(lba, dir_buf);
+    return (dir_entry_t*)&dir_buf[(n % (SECT_SIZE / sizeof(dir_entry_t))) * sizeof(dir_entry_t)];
 }
-*/
-/*
+
+void
+dump_file (int cluster) {
+    int disk_rc;
+    char* buf;
+    unsigned int lba = CLUSTER_OFFSET + cluster - 2; /* The first two clusters are reserved */
+    disk_read_lba_144(lba, dir_buf);
+
+    buf_dump(dir_buf, 1);
+}
+
+
+
 void dump_rootdir (void) {
     int i;
     dir_entry_t* direntry;
     int cluster;
+
+    bios_printf(csegstr("\n"));
+
+    bios_disk_reset();
+    disk_read_lba_144(0, dir_buf);
+    memcpy(&bpb, (dir_buf + BPB_BASE), sizeof(bpb_144_t));
 
     for (i = 0; i != bpb.max_root_entries; i++) {
         direntry = get_direntry(i);
@@ -132,21 +154,29 @@ void dump_rootdir (void) {
           default:
             memcpy(namebuf, direntry->name, 8);
             namebuf[8] = '\0';
+            bios_printf(namebuf);
             memcpy(extbuf, direntry->ext, 3);
             extbuf[3] = '\0';
-            bios_printf("[%s.%s] start:%4x size:%4x%4x \r\n", namebuf, extbuf, direntry->first_cluster, direntry->size_h, direntry->size_l);
+            bios_printf(extbuf);
+/*            bios_printf(csegstr("[%s.%s] start:%4x size:%4x%4x\n"),
+                    namebuf, extbuf,
+                    direntry->first_cluster,
+                    direntry->size_h,
+                    direntry->size_l);
+*/
             cluster = direntry->first_cluster;
-            dump_file(cluster);
+//            dump_file(cluster);
+            bios_printf(csegstr("  "));
             while (cluster != LAST_CLUSTER) {
-//                bios_printf("%3x ", cluster);
+                bios_printf(csegstr("."));
+                //bios_printf(csegstr("%3x "), cluster);
                 cluster = get_next_cluster(cluster);
             }
-//            bios_printf("\r\n");
+            bios_printf(csegstr("\n"));
             break;
         }
     }
 }
-*/
 
 /*
  * getting the position is easy: b % SECT_SIZE
