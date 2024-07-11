@@ -137,8 +137,11 @@ void dump_rootdir (void) {
     int i;
     dir_entry_t* direntry;
     int cluster;
+    int blocks;
 
     bios_printf(csegstr("\n"));
+
+    bios_printf(csegstr("Hello world %i\n"), 42);
 
     bios_disk_reset();
     disk_read_lba_144(0, dir_buf);
@@ -154,25 +157,23 @@ void dump_rootdir (void) {
           default:
             memcpy(namebuf, direntry->name, 8);
             namebuf[8] = '\0';
-            bios_printf(namebuf);
             memcpy(extbuf, direntry->ext, 3);
             extbuf[3] = '\0';
-            bios_printf(extbuf);
-/*            bios_printf(csegstr("[%s.%s] start:%4x size:%4x%4x\n"),
+            bios_printf(csegstr("[%s.%s] start:%4x size:%4x%4x\n"),
                     namebuf, extbuf,
                     direntry->first_cluster,
                     direntry->size_h,
                     direntry->size_l);
-*/
+
             cluster = direntry->first_cluster;
-//            dump_file(cluster);
-            bios_printf(csegstr("  "));
+            dump_file(cluster);
+            blocks = 0;
             while (cluster != LAST_CLUSTER) {
-                bios_printf(csegstr("."));
-                //bios_printf(csegstr("%3x "), cluster);
+                blocks++;
+                bios_printf(csegstr("%3x "), cluster);
                 cluster = get_next_cluster(cluster);
             }
-            bios_printf(csegstr("\n"));
+            bios_printf(csegstr("\n%i blocks\n"), blocks);
             break;
         }
     }

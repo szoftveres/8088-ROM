@@ -8,18 +8,35 @@
 .global main
 .global _start
 
+
+# == Memory map ==
+
+# 0x00000-0x003FF         interrupt vectors   1k    ->| 1k
+# 0x00400-0x004FF         Bios data area      256b  ->| 1.25k
+# 0x00500-0x07BFF         Free RAM area     29.75k  ->| 31.5k
+# 0x07C00-0x07FFF         OS load buffer      512b  ->| 32k
+
+# BIOS cpu configuration:
+#   DSEG:0x0000
+#   SSEG:0x0000
+#   SP:  0x0000:0400
+
+# Linker script to initialize .bss to 0x0400
+# ================
+
+
 .equ    ROMSEG,     0xE000      # First ROM address
 
 .equ    UART_BASE,  0x0020
 .equ    PIC_BASE,   0x0040
 .equ    IO_BASE,    0x0060
 
-# upper 512 byte of the interrupt table
-.equ    SSEG,               0x0030
-.equ    STACKP,             0x0100
+# Under the BIOS data area
+.equ    SSEG,               0x0000
+.equ    STACKP,             0x0400
 
-# First address above the interrupt table
-.equ    DSEG,               0x0040   # used to be 0040
+# .bss has to be set to 0x400 by the linker script
+.equ    DSEG,               0x0000   # used to be 0040
 
 # Boot sector load address
 .equ    ZEROSEG,        0x0000
@@ -277,9 +294,6 @@ print_banner:
 
         ret
 
-
-lofasz:
-        ret
 
 text_banner:
         .ascii "                          __   __              ______   ________\n"

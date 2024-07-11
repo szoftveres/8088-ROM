@@ -21,6 +21,24 @@ BIOS features include the ability to move the contents of the BIOS ROM to RAM an
 
 F000:0000 - F000:FFFF
 
+## Memory Map
+
+|Range             |    Area Description  |   Size    | Upper Limit |
+|------------------|----------------------|-----------|-------------|
+|0x00000-0x003FF   |     interrupt vectors|   1k      | 1k          |
+|0x00400-0x004FF   |     Bios data area   |   256b    | 1.25k       |
+|0x00500-0x07BFF   |     Free RAM area    | 29.75k    | 31.5k       |
+|0x07C00-0x07FFF   |     OS load buffer   |   512b    | 32k         |
+
+## BIOS cpu configuration:
+
+|DSEG|0x0000     |
+|SSEG|0x0000     |
+|SP  |0x0000:0400|
+
+Note: Linker script to initialize .bss to 0x0400
+
+
 ## Toolchain
 https://sourcery.mentor.com/GNUToolchain/release3298
 

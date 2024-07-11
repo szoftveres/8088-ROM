@@ -36,8 +36,6 @@
 .comm disk_buffer, 512, 2
 
 # --- Partition table, 16 bytes
-.local local_partition_table
-local_partition_table:
 
 .local partition_status
 .comm partition_status, 1, 1
