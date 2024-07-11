@@ -32,9 +32,11 @@ F000:0000 - F000:FFFF
 
 ## BIOS cpu configuration:
 
-|DSEG|0x0000     |
-|SSEG|0x0000     |
-|SP  |0x0000:0400|
+|Register|Value      |
+|--------|-----------|
+|DS      |0x0000     |
+|SS      |0x0000     |
+|SP      |0x0000:0400|
 
 Note: Linker script to initialize .bss to 0x0400
 
