@@ -23,12 +23,15 @@ F000:0000 - F000:FFFF
 
 ## Memory Map
 
-|Range             |    Area Description  |   Size    | Upper Limit |
-|------------------|----------------------|-----------|-------------|
-|0x00000-0x003FF   |     interrupt vectors|   1k      | 1k          |
-|0x00400-0x004FF   |     Bios data area   |   256b    | 1.25k       |
-|0x00500-0x07BFF   |     Free RAM area    | 29.75k    | 31.5k       |
-|0x07C00-0x07FFF   |     OS load buffer   |   512b    | 32k         |
+|Range             |    Area Description   |   Size    |     Limitis  |
+|------------------|-----------------------|-----------|--------------|
+|0x00000-0x003FF   |     Interrupt vectors |   1k      | 0 - 1k       |
+|SP - 0x003FF      |    Stack area         |           | up to 1k     |
+|0x00400-0x004FF   |     BIOS data area    |   256b    | 1k - 1.25k   |
+|0x00500-0xDFFFF   |     RAM area          | 894.75k   | 1.25k - 896k |
+|0x07C00-0x07FFF   | OS load buffer + 512b |   1024b   | 31k - 32k    |
+|0xE0000-0xEFFFF   |     ROM lower 64k     |    64k    | 896k - 960k  |
+|0xF0000-0xFFFFF   |     BIOS ROM          |    64k    | 960k - 1024k |
 
 ## BIOS cpu configuration:
 
