@@ -8,7 +8,7 @@ PROGRAM = rom
 CC = ia16-elf-gcc
 AS = ia16-elf-gcc
 LD = ia16-elf-gcc
-CFLAGS = -Wall -O0 -fno-PIC -funsigned-char -nostdlib -ffreestanding -march=i8086 -mtune=i8086
+CFLAGS = -Wall -O1 -fno-PIC -funsigned-char -nostdlib -ffreestanding -march=i8086 -mtune=i8086
 ASFLAGS = -march=i8086 -mtune=i8086
 LDFLAGS = -march=i8086 -mtune=i8086 -T ls.ld -L/home/martonk/mgc/embedded/codebench/lib/gcc/ia16-elf/6.2.0 -lgcc
 

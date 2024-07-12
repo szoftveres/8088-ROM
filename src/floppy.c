@@ -122,13 +122,13 @@ get_direntry (int n) {
 }
 
 void
-dump_file (int cluster) {
+dump_file (int cluster, int lines) {
     int disk_rc;
     char* buf;
     unsigned int lba = CLUSTER_OFFSET + cluster - 2; /* The first two clusters are reserved */
     disk_read_lba_144(lba, dir_buf);
 
-    buf_dump(dir_buf, 1);
+    buf_dump(dir_buf, lines);
 }
 
 
@@ -140,8 +140,6 @@ void dump_rootdir (void) {
     int blocks;
 
     bios_printf(csegstr("\n"));
-
-    bios_printf(csegstr("Hello world %i\n"), 42);
 
     bios_disk_reset();
     disk_read_lba_144(0, dir_buf);
@@ -166,14 +164,14 @@ void dump_rootdir (void) {
                     direntry->size_l);
 
             cluster = direntry->first_cluster;
-            dump_file(cluster);
+            dump_file(cluster, 32);
             blocks = 0;
             while (cluster != LAST_CLUSTER) {
                 blocks++;
-                bios_printf(csegstr("%3x "), cluster);
+//                bios_printf(csegstr("%3x "), cluster);
                 cluster = get_next_cluster(cluster);
             }
-            bios_printf(csegstr("\n%i blocks\n"), blocks);
+            bios_printf(csegstr("%i blocks\n"), blocks);
             break;
         }
     }

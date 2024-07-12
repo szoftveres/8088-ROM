@@ -17,13 +17,26 @@ dump_mem_line:
 
         pop     %si
         push    %si
-        mov     $0x0010, %cx              # cycle counter
-dump_mline_loop1:
+        mov     $0x0008, %cx              # cycle counter
+1:
         movb    %es:(%si), %al
         inc     %si
         call    print_h8
         PRINT_CHAR $' '
-        loop    dump_mline_loop1
+        loop    1b
+
+        PRINT_CHAR $' '
+
+        pop     %si
+        push    %si
+        addw    $0x0008, %si
+        mov     $0x0008, %cx              # cycle counter
+1:
+        movb    %es:(%si), %al
+        inc     %si
+        call    print_h8
+        PRINT_CHAR $' '
+        loop    1b
 
         PRINT_CHAR $' '
         PRINT_CHAR $'|'
@@ -31,19 +44,19 @@ dump_mline_loop1:
         pop     %si
         push    %si
         mov     $0x0010, %cx              # cycle counter
-dump_mline_loop2:
+2:
         movb    %es:(%si), %al
         inc     %si
         cmp     $0x20, %al
-        jb      dump_mline_loop2_subst
+        jb      dump_mline_subst
         cmp     $0x7E, %al
-        ja      dump_mline_loop2_subst
-        jmp     dump_mline_loop2_direct
-dump_mline_loop2_subst:
+        ja      dump_mline_subst
+        jmp     dump_mline_direct
+dump_mline_subst:
         movb    $'.', %al
-dump_mline_loop2_direct:
+dump_mline_direct:
         PRINT_CHAR
-        loop    dump_mline_loop2
+        loop    2b
 
         PRINT_CHAR $'|'
         NEWLINE

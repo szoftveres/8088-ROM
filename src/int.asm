@@ -9,7 +9,8 @@
 .endm
 
 # This code prepares the interrupt handler address in stack, and executes
-# a 'ret', which in turn jumps into this handler
+# a 'ret', which in turn jumps into this handler. At the end it copies the status
+# of carry flag into the flags register that's buried deep in the stack.
 
 # flags
 # CS

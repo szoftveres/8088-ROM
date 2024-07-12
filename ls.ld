@@ -8,7 +8,7 @@ SECTIONS
     . = 0x0000;
     *(.text)
     *(.data) 
-    *(.rodata) 
+    *(.rodata*)
     . = 0xFFF0;
     *(.cpu_entry)
     }
