@@ -8,7 +8,7 @@ int bios_printf (const char* fmt, ...);
 
 char* csegstr(char* p);
 
-void buf_dump (char* buf, int lines);
+void buf_dump (char* buf, unsigned int lines);
 
 size_t strlen (const char* s);
 
@@ -23,7 +23,7 @@ void *memset (void *s, int c, size_t n);
 extern void bios_putch (int c);
 
 extern int bios_disk_reset (void);
-extern int bios_disk_read_chs (int c, int h, int s, void* buf);
+extern int bios_disk_read_chs (unsigned int c, unsigned int h, unsigned int s, void* buf);
 
 extern unsigned int get_cs (void);
 

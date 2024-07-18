@@ -119,7 +119,7 @@ int bios_printf (const char* fmt, ...) {
 
 
 void
-buf_dump (char* buf, int lines) {
+buf_dump (char* buf, unsigned int lines) {
     int i;
     int addr = 0;
     while (lines--) {

@@ -32,7 +32,12 @@
 .local disk_sectors
 .comm disk_sectors, 2, 2
 
-.local disk_buffer
+
+
+
+.global last_read_sector
+.comm last_read_sector, 2, 2
+.global disk_buffer
 .comm disk_buffer, 512, 2
 
 # --- Partition table, 16 bytes
