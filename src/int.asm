@@ -10,15 +10,17 @@
 
 # This code prepares the interrupt handler address in stack, and executes
 # a 'ret', which in turn jumps into this handler. At the end it copies the status
-# of carry flag into the flags register that's buried deep in the stack.
+# flaginto the flags register that's buried deep in the stack. Also makes sure that
+# in- and outgoing register values are preserved (the only exception is DS, which
+# is restored to its before call value)
 
 # flags
 # CS
-# IP <-
+# PC <-
 # %bp
 # %ds
-# <optional: int number>
-# return address from handler
+# int number / new %bp
+# return address from handler / new %ax
 # handler address
 
 .macro  IRQ_DISPATCH      dispatch_table:req, num:req
@@ -26,12 +28,13 @@
         push    %ds                         # <- ds
         mov     $DSEG, %bp
         mov     %bp, %ds
-    .ifnb   \num
+
         movw    $\num, %bp              # interrupt number
         push    %bp
-    .endif
+
         movw    $1f, %bp                # 
         push    %bp                     # return address
+
         push    %ax                     # preserving ax
         mov     %ah, %al                # service number to AL
         shl     %ax                     # converting to even number offset
@@ -40,19 +43,30 @@
         movw    %cs:\dispatch_table(%bp), %bp # load handler address
         pop     %ax
         push    %bp                     # handler address to stack
-        ret                             # call the handler (address in stack)
+
+        movw    %sp, %bp
+        movw    %ss:8(%bp), %bp         # restore original %bp before call
+
+        ret                             # call the handler (address on stack)
 1:
-    .ifnb   \num
-        pop     %bp                     # clean up int number
-    .endif
+        pop     %ds                     # clean up int number (we're not going to need DS any more)
+
+        push    %bp                     # Save new BP
         movw    %sp, %bp
         push    %ax
+
+        movw    %ss:0(%bp), %ax         # dig the new bp out
+        movw    %ax, %ss:4(%bp)         # and bury it back so that it can be popped at the end
+
         pushf
         pop     %ax
-        andw    $0x0001, %ax            # carry set?
-        andw    $0xFFFE, %ss:8(%bp)     # First zero out carry
-        orw     %ax, %ss:8(%bp)         # Copy carry flag
+        # andw    $0x00FF, %ax             
+        # andw    $0xFF00, %ss:10(%bp)
+        # orw     %ax, %ss:10(%bp)         # Copy entire lower flag bit set
+        movb    %al, %ss:10(%bp)        # Copy entire lower flag bit set
         pop     %ax
+
+        pop     %bp
         pop     %ds
         pop     %bp
 .endm
@@ -153,6 +167,20 @@ int_dbg:
         call    print_seginfo
         movb    $0x00, %al
         stc                     # sad
+
+
+#        movw    $0x1111, %ax
+#        push    %ax
+#        pop     %es
+#        movw    $0x8888, %ax
+#        movw    $0x7777, %bx
+#        movw    $0x6666, %cx
+#        movw    $0x5555, %dx
+#        movw    $0x4444, %bp
+#        movw    $0x3333, %si
+#        movw    $0x2222, %di
+
+
         ret
 
 text_int_dbg1:
@@ -172,25 +200,25 @@ int_10_dispatch:
         .word   int_dbg         # 0x00
         .word   int_dbg         # 0x01
         .word   int_dbg         # 0x02
-        .word   int_10_03       # 0x03
+        .word   int_10_03       # 0x03    read cursor position
         .word   int_dbg         # 0x04
         .word   int_dbg         # 0x05
         .word   int_dbg         # 0x06
         .word   int_dbg         # 0x07
 
         .word   int_dbg         # 0x08
-        .word   int_10_09       # 0x09
-        .word   int_10_0A       # 0x0A
+        .word   int_10_09       # 0x09    write char and attribut
+        .word   int_10_0A       # 0x0A    write char
         .word   int_dbg         # 0x0B
         .word   int_dbg         # 0x0C
         .word   int_dbg         # 0x0D
-        .word   uart_send_byte  # 0x0E
+        .word   uart_send_byte  # 0x0E    write text in teletype mode
         .word   int_dbg         # 0x0F
 
         .word   int_dbg         # 0x10
         .word   int_dbg         # 0x11
         .word   int_dbg         # 0x12
-        .word   int_10_13       # 0x13
+        .word   int_10_13       # 0x13    write string
         .word   int_dbg         # 0x14
         .word   int_dbg         # 0x15
         .word   int_dbg         # 0x16
@@ -205,12 +233,14 @@ int_10_dispatch:
         .word   int_dbg         # 0x1E
         .word   int_dbg         # 0x1F
 
+# read cursor position 
 int_10_03:
         xor     %cx, %cx
         xor     %dx, %dx
         clc
         ret
 
+# Write character and attribute (09h) / character (0Ah)
 int_10_09:
 int_10_0A:
         push    %ax
@@ -225,6 +255,7 @@ int_10_0A:
         clc
         ret
 
+# Write string
 int_10_13:
         push    %ax
         push    %cx

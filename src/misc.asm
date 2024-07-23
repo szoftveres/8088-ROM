@@ -69,6 +69,9 @@ dump_mline_direct:
 ##################################################
 
 print_seginfo:
+        push    %ax
+        push    %si
+
         movw    $text_CS, %si
         call    print_str_cs
         movw    %cs, %ax
@@ -91,8 +94,10 @@ print_seginfo:
         PRINT_CHAR $':'
         movw    %sp, %ax
         call    print_h16
-
         NEWLINE
+
+        pop     %si
+        pop     %ax
         ret
 
 text_CS:

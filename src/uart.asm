@@ -11,6 +11,11 @@
 
 .section .text
 ##################################################
+
+# UART IO address
+
+.equ    UART_BASE,  0x0020
+
 uart_init:
         push    %ax
         movb    $0x80, %al              # DLAB = 1

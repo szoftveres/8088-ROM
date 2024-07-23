@@ -25,25 +25,20 @@
 # ================
 
 
-.equ    ROMSEG,     0xE000      # First ROM address
-
-.equ    UART_BASE,  0x0020
-.equ    PIC_BASE,   0x0040
 .equ    IO_BASE,    0x0060
 
-# Under the BIOS data area
-.equ    SSEG,               0x0000
-.equ    STACKP,             0x0400
 
-# .bss has to be set to 0x400 by the linker script
-.equ    DSEG,               0x0000   # used to be 0040
+
+.equ    ROMSEG,     0xE000      # First ROM address
+.equ    BIOSVAR_AREA_SIZE,  0x1000 # 4k
+
+.equ    SSEG,               (ROMSEG - (BIOSVAR_AREA_SIZE >> 4))
+.equ    STACKP,             BIOSVAR_AREA_SIZE
+.equ    DSEG,               (ROMSEG - (BIOSVAR_AREA_SIZE >> 4))
 
 # Boot sector load address
 .equ    ZEROSEG,        0x0000
 .equ    BOOTADDR,       0x7C00
-
-# BIOS 
-.equ    ROM_BOOT_SEG,   0xF000
 
 ##################################################
 .section .bss
@@ -254,6 +249,21 @@ startover:
         call    print_banner
         call    uart_type
 
+#        movw    $0x8888, %ax
+#        push    %ax
+#        pop     %es
+#        movw    $0x1111, %ax
+#        movw    $0x2222, %bx
+#        movw    $0x3333, %cx
+#        movw    $0x4444, %dx
+#        movw    $0x5555, %bp
+#        movw    $0x6666, %si
+#        movw    $0x7777, %di
+
+#        int     $0x10
+#        call    print_regs
+#        call    print_seginfo
+
 
 ##################################################
 1:
@@ -261,6 +271,7 @@ startover:
         jmp     1b
 
 ##################################################
+
 
 print_banner:
         NEWLINE
@@ -329,6 +340,9 @@ text_maxram:
 # ==== CPU cold start ====
 
 .section .cpu_entry
+
+# BIOS 
+.equ    ROM_BOOT_SEG,   0xF000
 
 cpu_start:
         jmp     $ROM_BOOT_SEG,$_start
