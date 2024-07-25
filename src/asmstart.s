@@ -36,7 +36,6 @@
 .equ    STACKP,             BIOSVAR_AREA_SIZE
 .equ    DSEG,               (ROMSEG - (BIOSVAR_AREA_SIZE >> 4))
 
-# Boot sector load address
 .equ    ZEROSEG,        0x0000
 .equ    BOOTADDR,       0x7C00
 
@@ -219,6 +218,7 @@ warm_start:
         mov     %ax, %ss
         mov     $STACKP,%sp
         call    int_init
+        call    bda_init
 
 ##################################################
 # don't touch the interrupt table
@@ -327,6 +327,7 @@ text_maxram:
 .include    "src/string.asm"
 .include    "src/i8259.asm"
 .include    "src/int.asm"
+.include    "src/bda.asm"
 .include    "src/uart.asm"
 .include    "src/timer.asm"
 .include    "src/led.asm"

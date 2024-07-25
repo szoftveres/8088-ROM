@@ -33,4 +33,25 @@
     PRINT_CHAR $'\n'
 .endm
 
+##################################################
+
+.macro  MEMSET  segm, addr, data, bytes
+    push    %ax
+    push    %cx
+    push    %es
+    push    %di
+
+    movw    \segm, %ax
+    movw    %ax, %es
+    movw    \addr, %di
+    movb    \data, %al
+    movw    \bytes, %cx
+    call    memset_ll
+
+    pop     %di
+    pop     %es
+    pop     %cx
+    pop     %ax
+.endm
+
         

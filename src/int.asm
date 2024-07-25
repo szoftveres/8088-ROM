@@ -24,6 +24,7 @@
 # handler address
 
 .macro  IRQ_DISPATCH      dispatch_table:req, num:req
+        
         push    %bp                         # <- bp
         push    %ds                         # <- ds
         mov     $DSEG, %bp
@@ -31,6 +32,9 @@
 
         movw    $\num, %bp              # interrupt number
         push    %bp
+        
+        cmpb    $0x20, %ah              # service number too high
+        jae     9f
 
         movw    $1f, %bp                # 
         push    %bp                     # return address
@@ -48,6 +52,12 @@
         movw    %ss:8(%bp), %bp         # restore original %bp before call
 
         ret                             # call the handler (address on stack)
+
+9:
+        call    int_dbg
+        stc
+        
+
 1:
         pop     %ds                     # clean up int number (we're not going to need DS any more)
 
@@ -126,7 +136,7 @@ int_table:
         .word   int_17h         # INT 17 - printer 
         .word   int_18h         # INT 18 - load basic
         .word   int_19h         # INT 19 - load OS
-        .word   int_bad         # INT 1A - Real time clock / PCI
+        .word   int_1Ah         # INT 1A - Real time clock / PCI
         .word   int_bad         # INT 1B - Ctrl+Brk
         .word   int_usr_timer   # INT 1C - user timer tick
         .word   int_bad         # INT 1D - VPT pointer
@@ -322,7 +332,7 @@ int_13h:
 
 int_13_01:
 int_13_15:
-        xorb    %ah, %ah
+        xorb    %al, %al
         clc
         ret
 
@@ -466,6 +476,68 @@ int_19h:
         mov     $startover, %ax
         push    %ax                     # start address offset
         lret
+
+##################################################
+
+# INT 1A -- clock
+
+int_1Ah:
+        IRQ_DISPATCH int_1A_dispatch, 0x1A
+        iret
+
+
+int_1A_00:
+        push    %di
+
+        movw    $BDA_DAILYCOUNTERH_WORD, %di
+        call    bda_loadw
+        movw    %ax, %cx
+        movw    $BDA_DAILYCOUNTERL_WORD, %di
+        call    bda_loadw
+        movw    %ax, %dx
+
+        xorb    %al, %al
+        clc
+
+        pop     %di
+        ret
+
+int_1A_dispatch:
+        .word   int_1A_00               # 0x00
+        .word   int_dbg                 # 0x01
+        .word   int_dbg                 # 0x02
+        .word   int_dbg                 # 0x03
+        .word   int_dbg                 # 0x04
+        .word   int_dbg                 # 0x05
+        .word   int_dbg                 # 0x06
+        .word   int_dbg                 # 0x07
+
+        .word   int_dbg                 # 0x08
+        .word   int_dbg                 # 0x09
+        .word   int_dbg                 # 0x0A
+        .word   int_dbg                 # 0x0B
+        .word   int_dbg                 # 0x0C
+        .word   int_dbg                 # 0x0D
+        .word   int_dbg                 # 0x0E
+        .word   int_dbg                 # 0x0F
+
+        .word   int_dbg                 # 0x10
+        .word   int_dbg                 # 0x11
+        .word   int_dbg                 # 0x12
+        .word   int_dbg                 # 0x13
+        .word   int_dbg                 # 0x14
+        .word   int_dbg                 # 0x15
+        .word   int_dbg                 # 0x16
+        .word   int_dbg                 # 0x17
+
+        .word   int_dbg                 # 0x18
+        .word   int_dbg                 # 0x19
+        .word   int_dbg                 # 0x1A
+        .word   int_dbg                 # 0x1B
+        .word   int_dbg                 # 0x1C
+        .word   int_dbg                 # 0x1D
+        .word   int_dbg                 # 0x1E
+        .word   int_dbg                 # 0x1F
 
 ##################################################
 

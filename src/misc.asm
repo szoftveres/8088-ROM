@@ -190,3 +190,14 @@ text_flags:
         .asciz " SR:"
 
 
+##################################################
+# %es:(%di) start address
+# %al: data
+# %cx: number of bytes
+
+memset_ll:
+    movb    %al, %es:(%di)
+    inc     %di
+    loop    memset_ll
+    ret
+
