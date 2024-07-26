@@ -65,7 +65,7 @@ int_timer_2hz:
 
 int_timer_32hz:
         int     $0x1C
-        call    bda_ctrinc
+#        call    bda_ctrinc
         call    pic_eoi
         iret
 

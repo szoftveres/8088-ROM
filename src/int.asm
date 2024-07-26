@@ -207,14 +207,14 @@ int_10h:
         iret
 
 int_10_dispatch:
-        .word   int_dbg         # 0x00
-        .word   int_dbg         # 0x01
-        .word   int_dbg         # 0x02
+        .word   int_success     # 0x00    set video mode
+        .word   int_success     # 0x01    set cursor type
+        .word   int_success     # 0x02    set cursor position
         .word   int_10_03       # 0x03    read cursor position
         .word   int_dbg         # 0x04
-        .word   int_dbg         # 0x05
-        .word   int_dbg         # 0x06
-        .word   int_dbg         # 0x07
+        .word   int_success     # 0x05    set active display
+        .word   int_success     # 0x06    scroll up
+        .word   int_success     # 0x07    scroll down
 
         .word   int_dbg         # 0x08
         .word   int_10_09       # 0x09    write char and attribut
@@ -223,7 +223,7 @@ int_10_dispatch:
         .word   int_dbg         # 0x0C
         .word   int_dbg         # 0x0D
         .word   uart_send_byte  # 0x0E    write text in teletype mode
-        .word   int_dbg         # 0x0F
+        .word   int_10_0F       # 0x0F    return video mode
 
         .word   int_dbg         # 0x10
         .word   int_dbg         # 0x11
@@ -262,6 +262,14 @@ int_10_0A:
         loop    1b
         pop     %cx
         pop     %ax
+        clc
+        ret
+
+# return video mode
+int_10_0F:
+        movb    $80, %ah
+        movb    $0x00, %al
+        movb    $0x00, %bh
         clc
         ret
 
@@ -409,25 +417,30 @@ int_16h:
         push    %ds
         mov     $DSEG, %bp
         mov     %bp, %ds
+        mov     %sp, %bp
 
 
         orb     %ah, %ah
         jnz     1f
         call    uart_receive_byte
-        jmp     2f
+        pop     %ds
+        pop     %bp
+        iret
 1:
         cmpb    $0x01, %ah
         jnz     1f
         call    uart_byte_available
-        push    %bp
-        mov     %sp, %bp
-        andw    $0xFFBF, %ss:6(%bp)         # zero flag treatment
-        orw     %ax, %ss:6(%bp)
-        pop     %bp
         or      %ax, %ax
-        jnz     1f
-        call    uart_receive_byte
+        jz      2f
+
+        orw     $0040, %ss:6(%bp)
+        jmp     2f
 1:
+        movw    $0x0016, %bp
+        push    %bp
+        call    int_dbg
+        pop     %bp
+        stc
 2:
         pop     %ds
         pop     %bp
@@ -486,7 +499,7 @@ int_1Ah:
         iret
 
 
-int_1A_00:
+int_1A_00: # get counter
         push    %di
 
         movw    $BDA_DAILYCOUNTERH_WORD, %di
@@ -500,11 +513,28 @@ int_1A_00:
         clc
 
         pop     %di
+        call    bda_ctrinc
+        ret
+
+int_1A_01: # set counter
+        push    %di
+        push    %ax
+
+        movw    $BDA_DAILYCOUNTERH_WORD, %di
+        movw    %cx, %ax
+        call    bda_storew
+        movw    $BDA_DAILYCOUNTERL_WORD, %di
+        movw    %dx, %ax
+        call    bda_storew
+        clc
+
+        pop     %ax
+        pop     %di
         ret
 
 int_1A_dispatch:
-        .word   int_1A_00               # 0x00
-        .word   int_dbg                 # 0x01
+        .word   int_1A_00               # 0x00  get counter
+        .word   int_1A_01               # 0x01  set counter
         .word   int_dbg                 # 0x02
         .word   int_dbg                 # 0x03
         .word   int_dbg                 # 0x04

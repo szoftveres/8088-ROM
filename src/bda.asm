@@ -6,8 +6,7 @@
 .equ    BDA_EQUIPMENTLIST_WORD,     0x10
 .equ    BDA_MEMORYSIZE_WORD,        0x13
 
-.equ    BDA_KEYBFLAG0_BYTE,         0x17
-.equ    BDA_KEYBFLAG1_BYTE,         0x18
+.equ    BDA_KEYBFLAG_WORD,          0x17
 
 
 .equ    BDA_KEYBUFHEAD_WORD,        0x1A

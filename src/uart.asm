@@ -190,9 +190,12 @@ uart_byte_available:
         push    %si
         mov     %ds:uart_rcvbuf_rd, %si
         cmp     %ds:uart_rcvbuf_wr, %si
-        pushf
-        pop     %ax
-        andw    $0040, %ax              # zero flag
+        movw    $0x0001, %ax
+        jz      1f
+        inc     %si
+        and     $0x003F, %si            # 64
+        movb    %ds:uart_rcvbuf(%si), %al
+1:
         pop     %si
         ret
 
