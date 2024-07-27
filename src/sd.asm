@@ -154,6 +154,62 @@ sd_read_data:
 
 
 ##################################################
+# es:(di)     buffer
+# cx: bytes to write (not including 2 bytes of CRC)
+# carry set: error
+
+sd_write_data:
+        push    %ax
+        push    %bx
+        push    %di
+        push    %cx
+
+        movb    $0xFE, %al          # Sending data token
+        call    spi_transfer
+        call    sd_delay
+
+        pop     %cx
+        push    %cx                 # pop number of bytes into %cx
+3:
+        movb    %es:(%di), %al
+        call    spi_transfer
+        inc     %di
+        loop    3b
+        call    sd_delay
+
+        mov     $0x0100, %cx        # Waiting for the data accepted token, 256 cycles
+1:
+        movb    $0xFF, %al
+        call    spi_transfer
+        orb     $0x1F, %al
+        cmpb    $0x05, %al
+        jz      2f                  # Data accepted
+        loop    1b
+        stc
+        jmp     9f                  # Data never got accepted
+2:
+        
+        mov     $0x0100, %cx        # Waiting for the write to finish, 256 cycles
+1:
+        movb    $0xFF, %al
+        call    spi_transfer
+        orb     %al, %al
+        jnz     2f                  # Write finished
+        loop    1b
+        stc
+        jmp     9f                  # Data never got accepted
+2:
+
+        clc
+9:
+        pop     %cx
+        pop     %di
+        pop     %bx
+        pop     %ax
+        ret
+
+
+##################################################
 # huge function: initializes the card and gets its size
 # carry: error
 
@@ -323,4 +379,47 @@ sd_read_block:
 
 
 ##################################################
+# cx: block num lo
+# dx: block num hi
+# es:(di)     buffer
+# carry: error
+
+sd_write_block:
+        push    %ax
+        push    %cx
+        push    %dx
+
+        movw    %cx, %ax
+        movw    %ds:sdcard_block_to_byte, %cx
+1:
+        shl     %ax                 # uppermost bit goes to carry
+        rcl     %dx                 # lowest bit comes from the carry
+        loop    1b
+
+        mov     %ax, %cx
+
+        call    spi_assert
+        call    sd_delay
+        movb    $SDCMD_WRITEBLOCK, %al
+        call    sd_command
+        orb     %al, %al
+        stc
+        jnz     2f                  # 0x00 response, OK
+        movw    %ds:sdcard_block_to_byte, %cx
+        mov     $0x0001, %ax
+        shl     %cl, %ax
+        mov     %ax, %cx
+        call    sd_write_data
+2:
+        pushf
+        call    spi_deassert
+        popf
+        pop     %dx
+        pop     %cx
+        pop     %ax
+        ret
+
+
+##################################################
+
 

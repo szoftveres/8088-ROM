@@ -358,7 +358,7 @@ int_13_dispatch:
         .word   disk_reset              # 0x00
         .word   int_13_01               # 0x01
         .word   disk_read_chs           # 0x02
-        .word   int_dbg                 # 0x03
+        .word   disk_write_chs          # 0x03
         .word   int_dbg                 # 0x04
         .word   int_dbg                 # 0x05
         .word   int_dbg                 # 0x06
