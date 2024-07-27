@@ -1,25 +1,23 @@
 # 8088-ROM
-8088 single-board computer and ROM BIOS
+
+This is a DIY x86 single board computer and ROM BIOS, capable of booting into [FreeDOS](https://www.freedos.org/). 
+The board is equipped with an 80C88 (or any compatible) CPU running at 3.6864MHz, 1MB SRAM, 128kB in-system programmable BIOS EEPROM, an RS232 compatible serial port (16C550B UART at IRQ7), two fixed time interval sources: 32kHz (IRQ5) and 2Hz (IRQ4), a 4-bit I/O port, SPI and SD-card interfaces and an 82C59A programmable interrupt controller.
 
 ![image small x86](pcb.png)
+## [Schematics (pdf)](schematics.pdf) <--
 ![pcbd](pcbd.png)
 ![image board3](board3.jpg)
 
 
-* ![Schematics](schematics.pdf)
 
+Standard BIOS INT 10h and INT 16h calls are re-routed to the UART, which is the default character I/O device for this system.
 
-This is a hobby i8088 single board computer and ROM BIOS, capable of booting into FreeDOS.
-The board features a 16550 UART (IRQ7), two periodical time sources: 32kHz (IRQ5) and 2Hz (IRQ4), a 4-bit I/O port, 1Mb SRAM, 128k EEPROM, SPI and SD-card interfaces.
-
-Standard I/O calls (INT 10h and INT 16h) are re-routed to the UART, which is the default I/O device for this system.
-
-The board supports **SD card** as a storage media:
-A software SPI bus is implemented on top of the I/O port and the ROM has all the routines to access the SD card through SPI bus. On startup, the BIOS checks for the presence of an SD card and tries to find a valid MS-DOS partition on it. Once it finds a valid partition that has the exact size of 1.44Mb, it gives access to it via the IBM PC standard INT 13h calls, just as if the 1.44Mb partition on the SD card was an actual 1.44Mb floppy disk. An OS can then be booted, just like on normal PCs.
+### SD card interface:
+A software bit-banged SPI bus is implemented on top of the I/O port and the BIOS has all the routines to access the SD card through SPI bus. On startup, the BIOS checks for the presence of an SD card and tries to find a valid MS-DOS partition on it. Once it finds a valid partition that has the exact size of 1.44MB, it gives access to it via standard BIOS INT 13h calls, just as if it was an actual 1.44MB floppy disk. Subsequently, a standard IBM PC compatible OS boot process can take place.
 
 ![fddir1](fddir1.png)
 
-BIOS features include the ability to move the contents of the BIOS ROM to RAM and restart the execution from RAM, the ability to receive 64k binary blocks via the UART, place them into RAM and execute them, as well as burn the contents of a RAM segment into the EEPROM. These features together enable the development of the software wihtout the need of any external EEPROM burner device.
+The position-independent BIOS ROM code can be copied to RAM and the system can continue the execution from RAM; 64k binary blocks can be downloaded to RAM via the UART and the system can jump into this block, as well as the contents of any RAM segment can be directly burnt into the on-board EEPROM. These features together enable the development and debugging of the ROM code without any external EEPROM burner device.
 
 ## Memory Map
 
