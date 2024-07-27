@@ -9,7 +9,7 @@
 * ![Schematics](schematics.pdf)
 
 
-This is a hobby i8088 single board computer and ROM BIOS, capable of running FreeDOS.
+This is a hobby i8088 single board computer and ROM BIOS, capable of booting into FreeDOS.
 The board features a 16550 UART (IRQ7), two periodical time sources: 32kHz (IRQ5) and 2Hz (IRQ4), a 4-bit I/O port, 1Mb SRAM, 128k EEPROM, SPI and SD-card interfaces.
 
 Standard I/O calls (INT 10h and INT 16h) are re-routed to the UART, which is the default I/O device for this system.
@@ -17,7 +17,7 @@ Standard I/O calls (INT 10h and INT 16h) are re-routed to the UART, which is the
 The board supports **SD card** as a storage media:
 A software SPI bus is implemented on top of the I/O port and the ROM has all the routines to access the SD card through SPI bus. On startup, the BIOS checks for the presence of an SD card and tries to find a valid MS-DOS partition on it. Once it finds a valid partition that has the exact size of 1.44Mb, it gives access to it via the IBM PC standard INT 13h calls, just as if the 1.44Mb partition on the SD card was an actual 1.44Mb floppy disk. An OS can then be booted, just like on normal PCs.
 
-![fd1](fdboot1.png)  ![fddir](fddir.png)
+![fddir1](fddir1.png)
 
 BIOS features include the ability to move the contents of the BIOS ROM to RAM and restart the execution from RAM, the ability to receive 64k binary blocks via the UART, place them into RAM and execute them, as well as burn the contents of a RAM segment into the EEPROM. These features together enable the development of the software wihtout the need of any external EEPROM burner device.
 

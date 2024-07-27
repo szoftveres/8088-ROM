@@ -190,7 +190,7 @@ uart_byte_available:
         push    %si
         mov     %ds:uart_rcvbuf_rd, %si
         cmp     %ds:uart_rcvbuf_wr, %si
-        movw    $0x0001, %ax
+        movw    $0x0001, %ax   # XXX This makes no sense but FreeDOS wants it
         jz      1f
         inc     %si
         and     $0x003F, %si            # 64
