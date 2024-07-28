@@ -41,7 +41,12 @@ mainloop:
 1:
         cmp     $'s', %al
         jnz     1f
-        call    diskmenu_help
+        call    diskmenu_entry
+        jmp     2f              # help
+1:
+        cmp     $'t', %al
+        jnz     1f
+        call    main_hex_echo
         jmp     2f              # help
 1:
         cmp     $'w', %al
@@ -73,6 +78,7 @@ main_help_text:
         .ascii   "     b : burn [ES:0000] to ROM [F000:0000]\n"
         .ascii   "     g : execute at [ES:0000]\n"
         .ascii   "     s : -> disk menu\n"
+        .ascii   "     t : terminal hex echo\n"
         .ascii   "     w : warm boot on next reset\n"
         .asciz   "\n"
 
@@ -187,6 +193,15 @@ main_warmboot:
         NEWLINE
         ret
 
+##################################################
+
+main_hex_echo:
+        GET_CHAR
+        call print_h8
+        NEWLINE
+        jmp main_hex_echo
+
+        
 ##################################################
 
 main_cpy:

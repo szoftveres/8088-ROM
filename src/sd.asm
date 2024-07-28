@@ -155,6 +155,57 @@ sd_read_data:
 
 ##################################################
 # es:(di)     buffer
+# cx: bytes to read (!! must be integer multiple of 16)
+# carry set: error
+
+sd_read_data_16:
+        push    %ax
+        push    %bx
+        push    %di
+        push    %cx
+
+        mov     $0x0100, %cx        # Waiting for the data token, 256 cycles
+1:        
+        movb    $0xFF, %al
+        call    spi_transfer
+        cmpb    $0xFE, %al
+        jz      2f                  # Data token received, GO!
+        movb    %al, %bl
+        andb    $0xE0, %bl
+        stc
+        jz      9f                  # Error token received, bail
+        call    sd_delay
+        loop    1b
+        stc
+        jmp     9f
+2:        
+        pop     %cx
+        push    %cx                 # pop number of bytes into %cx
+        shr     $1, %cx
+        shr     $1, %cx
+        shr     $1, %cx
+        shr     $1, %cx             # dividing the number of bytes by 16
+3:
+        call    spi_read_16
+        loop    3b
+
+        movb    $0xFF, %al
+        call    spi_transfer        # CRC byte 1
+        movb    $0xFF, %al
+        call    spi_transfer        # CRC byte 2
+
+        call    sd_delay
+        clc
+9:
+        pop     %cx
+        pop     %di
+        pop     %bx
+        pop     %ax
+        ret
+
+
+##################################################
+# es:(di)     buffer
 # cx: bytes to write (not including 2 bytes of CRC)
 # carry set: error
 
@@ -367,7 +418,7 @@ sd_read_block:
         mov     $0x0001, %ax
         shl     %cl, %ax
         mov     %ax, %cx
-        call    sd_read_data
+        call    sd_read_data_16
 2:
         pushf
         call    spi_deassert

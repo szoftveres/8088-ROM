@@ -1,5 +1,10 @@
 .global list_rootdir
 
+diskmenu_entry:
+        call    disk_full_reset
+        jnc     diskmenu_help
+        ret
+
 diskmenu_help:
         NEWLINE
         call    print_clock
@@ -13,11 +18,6 @@ diskmenu_loop:
         cmp     $'b', %al
         jnz     1f
         call    disk_boot_os
-        jmp     2f              # help
-1:
-        cmp     $'r', %al
-        jnz     1f
-        call    disk_full_reset
         jmp     2f              # help
 1:
         cmp     $'l', %al
@@ -47,9 +47,8 @@ diskmenu_loop:
 
 diskmenu_help_text:
         .ascii "\n  [nl] : disk menu help\n"
-        .ascii   "     r : full disk system reset\n"
-        .ascii   "     b : boot OS from mbr [0000:7C00]\n"
         .ascii   "     l : list rootdir\n"
+        .ascii   "     b : boot OS from mbr [0000:7C00]\n"
         .ascii   "     x : <- back to main menu\n"
         .asciz   "\n"
 
@@ -92,7 +91,9 @@ disk_full_reset:
         jc      1f
         mov     $diskfullreset_diskok_text, %si
 1:
+        pushf
         call    print_str_cs
+        popf
         ret
 
 diskfullreset_sdiniterr_text:

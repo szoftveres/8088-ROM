@@ -28,20 +28,29 @@
 # CS must be asserted separately
 # al: data in- and out
 
+
+# SPI_BIT_TRANSFER
+# %cl: in byte, aligned to MISO
+# %dx: IO port address
+# %al: IO port current state
+# %bl: out byte, aligned to MOSI
+# %si: clock bit, set to 1, for clock quick flipping (XOR)
+# %ch: data in, MISO bit info masked out
+
+
 .macro  SPI_BIT_TRANSFER
         movb    %bl, %bh
         andb    $MOSI_BIT, %bh          # prepare the bit in bh
         andb    $NMOSI_BIT, %al         # zero out first
         orb     %bh, %al                # then set if needed
         outb    %al, (%dx)              # MSB out
-        xor     %di, %ax                # Clock flip
+        xor     %si, %ax                # Clock flip
         outb    %al, (%dx)
-        nop                             # small gap for the card
         inb     (%dx), %al              # MSB in
         movb    %al, %ch
         andb    $MISO_BIT, %ch
         orb     %ch, %cl                # set bit in out data
-        xor     %di, %ax                # Clock flip
+        xor     %si, %ax                # Clock flip
         outb    %al, (%dx)
         rol     $1, %bl                 # Rotate data
         rol     $1, %cl
@@ -52,15 +61,15 @@ spi_transfer:
         push    %bx
         push    %cx
         push    %dx
-        push    %di
+        push    %si
 
-        mov     $CLK_BIT, %di           # Clock flip
+        mov     $CLK_BIT, %si           # Clock flip
         mov     $IO_BASE, %dx           # IO address
 
         movb    $0x00, %cl              # zero out 'in' data
 
-        rol     $1, %al                 # bring MSB to bit
-        rol     $1, %al                 # pos. 1
+        rol     $1, %al                 # align output byte to MOSI
+        rol     $1, %al                 #
         movb    %al, %bl                # prepare 'out' data in bl
 
         inb     (%dx), %al
@@ -75,17 +84,308 @@ spi_transfer:
 
         movb    %cl, %al
 
-        rol     $1, %al                 # bring MSB to bit
-        rol     $1, %al                 # pos. 7
+        rol     $1, %al                 # align input data to MISO
+        rol     $1, %al                 #
         rol     $1, %al
 
-        pop     %di
+        pop     %si
         pop     %dx
         pop     %cx
         pop     %bx
         ret
 
+
 ##################################################
+# CS must be asserted separately
+# %es:(%di) buffer, %di automatically incremented
+
+
+# SPI_BIT_READ
+# %cl: in byte, aligned to MISO
+# %dx: IO port address
+# %al: IO port current state
+# %bx: clock bit, set to 1, for clock quick flipping (XOR)
+# %ch: data in, MISO bit info masked out
+
+
+.macro  SPI_BIT_READ
+        xor     %bx, %ax                # Clock flip
+        outb    %al, (%dx)
+        inb     (%dx), %al              # MSB in
+        movb    %al, %ch
+        andb    $MISO_BIT, %ch
+        orb     %ch, %cl                # set bit in out data
+        xor     %bx, %ax                # Clock flip
+        outb    %al, (%dx)
+        rol     $1, %cl
+.endm
+
+
+spi_read_16:
+        push    %ax
+        push    %bx
+        push    %cx
+        push    %dx
+
+        mov     $CLK_BIT, %bx           # Clock flip
+        mov     $IO_BASE, %dx           # IO address
+
+        inb     (%dx), %al
+        orb     $MOSI_BIT, %al          # to send 0xFF out
+        outb    %al, (%dx)              # MSB out
+
+
+        movb    $0x00, %cl              # zero out 'in' data
+        SPI_BIT_READ                    # unrolled loop 8x
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        rol     $1, %cl                 # align input data to MISO
+        rol     $1, %cl                 #
+        rol     $1, %cl
+        movb    %cl, %es:(%di)
+        inc     %di
+
+        movb    $0x00, %cl              # zero out 'in' data
+        SPI_BIT_READ                    # unrolled loop 8x
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        rol     $1, %cl                 # align input data to MISO
+        rol     $1, %cl                 #
+        rol     $1, %cl
+        movb    %cl, %es:(%di)
+        inc     %di
+
+        movb    $0x00, %cl              # zero out 'in' data
+        SPI_BIT_READ                    # unrolled loop 8x
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        rol     $1, %cl                 # align input data to MISO
+        rol     $1, %cl                 #
+        rol     $1, %cl
+        movb    %cl, %es:(%di)
+        inc     %di
+
+        movb    $0x00, %cl              # zero out 'in' data
+        SPI_BIT_READ                    # unrolled loop 8x
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        rol     $1, %cl                 # align input data to MISO
+        rol     $1, %cl                 #
+        rol     $1, %cl
+        movb    %cl, %es:(%di)
+        inc     %di
+
+        movb    $0x00, %cl              # zero out 'in' data
+        SPI_BIT_READ                    # unrolled loop 8x
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        rol     $1, %cl                 # align input data to MISO
+        rol     $1, %cl                 #
+        rol     $1, %cl
+        movb    %cl, %es:(%di)
+        inc     %di
+
+        movb    $0x00, %cl              # zero out 'in' data
+        SPI_BIT_READ                    # unrolled loop 8x
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        rol     $1, %cl                 # align input data to MISO
+        rol     $1, %cl                 #
+        rol     $1, %cl
+        movb    %cl, %es:(%di)
+        inc     %di
+
+        movb    $0x00, %cl              # zero out 'in' data
+        SPI_BIT_READ                    # unrolled loop 8x
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        rol     $1, %cl                 # align input data to MISO
+        rol     $1, %cl                 #
+        rol     $1, %cl
+        movb    %cl, %es:(%di)
+        inc     %di
+
+        movb    $0x00, %cl              # zero out 'in' data
+        SPI_BIT_READ                    # unrolled loop 8x
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        rol     $1, %cl                 # align input data to MISO
+        rol     $1, %cl                 #
+        rol     $1, %cl
+        movb    %cl, %es:(%di)
+        inc     %di
+
+        movb    $0x00, %cl              # zero out 'in' data
+        SPI_BIT_READ                    # unrolled loop 8x
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        rol     $1, %cl                 # align input data to MISO
+        rol     $1, %cl                 #
+        rol     $1, %cl
+        movb    %cl, %es:(%di)
+        inc     %di
+
+        movb    $0x00, %cl              # zero out 'in' data
+        SPI_BIT_READ                    # unrolled loop 8x
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        rol     $1, %cl                 # align input data to MISO
+        rol     $1, %cl                 #
+        rol     $1, %cl
+        movb    %cl, %es:(%di)
+        inc     %di
+
+        movb    $0x00, %cl              # zero out 'in' data
+        SPI_BIT_READ                    # unrolled loop 8x
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        rol     $1, %cl                 # align input data to MISO
+        rol     $1, %cl                 #
+        rol     $1, %cl
+        movb    %cl, %es:(%di)
+        inc     %di
+
+        movb    $0x00, %cl              # zero out 'in' data
+        SPI_BIT_READ                    # unrolled loop 8x
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        rol     $1, %cl                 # align input data to MISO
+        rol     $1, %cl                 #
+        rol     $1, %cl
+        movb    %cl, %es:(%di)
+        inc     %di
+
+        movb    $0x00, %cl              # zero out 'in' data
+        SPI_BIT_READ                    # unrolled loop 8x
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        rol     $1, %cl                 # align input data to MISO
+        rol     $1, %cl                 #
+        rol     $1, %cl
+        movb    %cl, %es:(%di)
+        inc     %di
+
+        movb    $0x00, %cl              # zero out 'in' data
+        SPI_BIT_READ                    # unrolled loop 8x
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        rol     $1, %cl                 # align input data to MISO
+        rol     $1, %cl                 #
+        rol     $1, %cl
+        movb    %cl, %es:(%di)
+        inc     %di
+
+        movb    $0x00, %cl              # zero out 'in' data
+        SPI_BIT_READ                    # unrolled loop 8x
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        rol     $1, %cl                 # align input data to MISO
+        rol     $1, %cl                 #
+        rol     $1, %cl
+        movb    %cl, %es:(%di)
+        inc     %di
+
+        movb    $0x00, %cl              # zero out 'in' data
+        SPI_BIT_READ                    # unrolled loop 8x
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        SPI_BIT_READ
+        rol     $1, %cl                 # align input data to MISO
+        rol     $1, %cl                 #
+        rol     $1, %cl
+        movb    %cl, %es:(%di)
+        inc     %di
+
+
+        pop     %dx
+        pop     %cx
+        pop     %bx
+        pop     %ax
+        ret
+
+##################################################
+
+
+
 
 spi_init:
         push    %ax
