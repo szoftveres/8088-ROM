@@ -502,31 +502,46 @@ int_1Ah:
 int_1A_00: # get counter
         push    %di
 
-        movw    $BDA_DAILYCOUNTERH_WORD, %di
-        call    bda_loadw
-        movw    %ax, %cx
-        movw    $BDA_DAILYCOUNTERL_WORD, %di
-        call    bda_loadw
-        movw    %ax, %dx
+        #movw    $BDA_DAILYCOUNTERH_WORD, %di
+        #call    bda_loadw
+        #movw    %ax, %cx
+        
+        #movw    $BDA_DAILYCOUNTERL_WORD, %di
+        #call    bda_loadw
+        #movw    %ax, %dx
 
+        movw    %ds:dailycounter_l, %ax
+        movw    %ax, %dx
+        inc     %ax
+        movw    %ax, %ds:dailycounter_l
+        movw    %ds:dailycounter_h, %ax
+        movw    %ax, %cx
+        jnc     1f
+        inc     %ax
+        movw    %ax, %ds:dailycounter_h
+1:
         xorb    %al, %al
         clc
 
         pop     %di
-        call    bda_ctrinc
+#        call    bda_ctrinc
         ret
 
 int_1A_01: # set counter
         push    %di
         push    %ax
 
-        movw    $BDA_DAILYCOUNTERH_WORD, %di
-        movw    %cx, %ax
-        call    bda_storew
-        movw    $BDA_DAILYCOUNTERL_WORD, %di
-        movw    %dx, %ax
-        call    bda_storew
-        clc
+        movw    %dx, %ds:dailycounter_l
+        movw    %cx, %ds:dailycounter_h
+
+
+#        movw    $BDA_DAILYCOUNTERH_WORD, %di
+#        movw    %cx, %ax
+#        call    bda_storew
+#        movw    $BDA_DAILYCOUNTERL_WORD, %di
+#        movw    %dx, %ax
+#        call    bda_storew
+#        clc
 
         pop     %ax
         pop     %di

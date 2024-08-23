@@ -3,6 +3,7 @@
 .equ    BDASEG,         0x0040
 
 
+.equ    BDA_EBDA_WORD,              0x0E
 .equ    BDA_EQUIPMENTLIST_WORD,     0x10
 .equ    BDA_MEMORYSIZE_WORD,        0x13
 
@@ -84,6 +85,15 @@ bda_init:
 
     MEMSET  $BDASEG, $0x0, $0x0, $0x100
 
+
+    pop     %di
+    pop     %ax
+    ret
+
+    movw    $0x0000, %ax
+    movw    $BDA_EBDA_WORD, %di
+    call    bda_storew
+
     movw    $0x0101, %ax
     movw    $BDA_EQUIPMENTLIST_WORD, %di
     call    bda_storew
@@ -94,11 +104,11 @@ bda_init:
 
     movw    $80, %ax
     movw    $BDA_COLUMNS_WORD, %di
-    call    bda_storew
+    # call    bda_storew
 
     movw    $20, %ax
     movw    $BDA_ROWS_WORD, %di
-    call    bda_storew
+    # call    bda_storew
 
 
     pop     %di

@@ -2,9 +2,16 @@
 .equ    LED_BIT,    0x08
 .equ    NLED_BIT,    0xF7
 
+
+
+.equ    CPU_ERROR,    2
+.equ    RAM_ERROR,    3
+
+
 ##################################################
-# doesn't use neither data nor stack (RAM)
-# bl: number of blinks
+# Fatal error LED code blinker
+# no ram needed at all
+# bl: number of blinks (error code)
 
 halt_blink:
         movb    %bl, %bh            # save the blink no. in %bh

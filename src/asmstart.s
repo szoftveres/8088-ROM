@@ -104,7 +104,7 @@ cpu_test_2:
         jz      cpu_ok
 
 cpu_fail:
-        movb    $0x02, %bl
+        movb    $CPU_ERROR, %bl
         jmp     halt_blink
 cpu_ok:
 
@@ -125,41 +125,51 @@ cpu_ok:
 ##################################################
 # Test minimal RAM
 
-.equ    MIN_RAM,    0x7FFF      # first 32k
+.equ    MIN_RAM,    0x8000      # first 32k
 
-        xor     %ax, %ax
-        mov     %ax, %ds        # first segment
+        movw    $0x0000, %ax
+        movw    %ax, %es
+
 
         movb    $0x55, %al      # pattern 1
         movb    $0xAA, %bl      # pattern 2
 
-        mov     $MIN_RAM, %cx   # cycle counter
-ram_fill1_loop:
-        mov     %cx, %di
-        movb    %al, (%di)      # fill with pattern 1
-        loop    ram_fill1_loop
+        movw    $MIN_RAM, %cx   # cycle counter
+        movw    $0x0000, %di
+1:
+        movb    %al, %es:(%di)  # fill with pattern 1
+        inc     %di
+        loop    1b
 
-        mov     $MIN_RAM, %cx   # cycle counter
-ram_ver1_loop:
-        mov     %cx, %di
-        cmpb    (%di), %al      # verify against pattern 1
-        jnz     ram_fail1
-        movb    %bl, (%di)      # fill with pattern 2
-        loop    ram_ver1_loop
+        movw    $MIN_RAM, %cx   # cycle counter
+        movw    $0x0000, %di
+2:
+        cmpb    %es:(%di), %al  # verify against pattern 1
+        jnz     ram_fail
+        movb    %bl, %es:(%di)  # fill with pattern 2
+        inc     %di
+        loop    2b
 
-        mov     $MIN_RAM, %cx   # cycle counter
-ram_ver2_loop:
-        mov     %cx, %di
-        cmpb    (%di), %bl      # verify against pattern 2
-        jnz     ram_fail2
-        loop    ram_ver2_loop
+        movw    $MIN_RAM, %cx   # cycle counter
+        movw    $0x0000, %di
+3:
+        cmpb    %es:(%di), %bl  # verify against pattern 2
+        jnz     ram_fail
+        movb    %al, %es:(%di)  # fill again with pattern 1
+        inc     %di
+        loop    3b
+
+        movw    $MIN_RAM, %cx   # cycle counter
+        movw    $0x0000, %di
+4:
+        cmpb    %es:(%di), %al  # verify against pattern 1
+        jnz     ram_fail
+        inc     %di
+        loop    4b
 
         jmp     ram_ok
-ram_fail1:
-        movb    $0x03, %bl
-        jmp     halt_blink
-ram_fail2:
-        mov     $0x03, %bl
+ram_fail:
+        movb    $RAM_ERROR, %bl
         jmp     halt_blink
 ram_ok:
 
@@ -249,18 +259,19 @@ startover:
         call    print_banner
         call    uart_type
 
-#        movw    $0x8888, %ax
-#        push    %ax
-#        pop     %es
-#        movw    $0x1111, %ax
-#        movw    $0x2222, %bx
-#        movw    $0x3333, %cx
-#        movw    $0x4444, %dx
-#        movw    $0x5555, %bp
-#        movw    $0x6666, %si
-#        movw    $0x7777, %di
 
-#        int     $0x10
+
+
+#        push    %ds
+#        movw    %cs, %ax        # setting up
+#        movw    %ax, %ds        # %ds to point to %cs
+#        movw    $1f+1, %di      # address of data in the instruction
+#        movb    $0x21, %bl      # new data
+#        movb    $0x76, %ah      # setting up %ah 
+#        movb    %bl, %ds:(%di)  # this should overwrite the next. instr
+#1:
+#        movb    $0x54, %al      # setting up %al
+#        pop     %ds             # restoring %ds
 #        call    print_regs
 #        call    print_seginfo
 

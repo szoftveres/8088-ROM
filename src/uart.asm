@@ -20,9 +20,9 @@ uart_init:
         push    %ax
         movb    $0x80, %al              # DLAB = 1
         outb    %al, $UART_BASE+3       # LCR
-        movb    $0x06, %al              # 6 (38400 baud @ 3.6864MHz)
+        movb    $0x09, %al              # 9 (38400 baud @ 5.5296MHz)
         outb    %al, $UART_BASE+0       # divisor LSB
-        movb    $0x00, %al              # 0 (38400 baud @ 3.6864MHz)
+        movb    $0x00, %al              # 0 (38400 baud @ 5.5296MHz)
         outb    %al, $UART_BASE+1       # divisor MSB
         movb    $0x03, %al              # DLAB = 0,    N,8,1
         outb    %al, $UART_BASE+3       # LCR
@@ -173,7 +173,9 @@ uart_send_byte:
         inb     $UART_BASE+5, %al       # LSR
         and     $0x0020, %ax
         jnz     2f
+        call    led_off
         HALT_WAIT                       # halt for interrupt 
+        call    led_on
         jmp     1b
 2:
         pop     %ax
@@ -209,7 +211,9 @@ uart_receive_byte:
         mov     %ds:uart_rcvbuf_rd, %si
         cmp     %ds:uart_rcvbuf_wr, %si
         jnz     2f
+        call    led_off
         HALT_WAIT                       # halt for interrupt
+        call    led_on
         jmp     1b
 2:
         inc     %si

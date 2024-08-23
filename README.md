@@ -1,7 +1,7 @@
 # 8088-ROM
 
 This is a DIY x86 single-board computer and ROM BIOS that is capable of booting into [FreeDOS](https://www.freedos.org/) and running text-based DOS programs.
-The system is equipped with an 80C88 (or compatible) CPU running at 3.6864MHz, 1MB SRAM, 128kB in-system programmable BIOS EEPROM, an RS232 compatible 16C550 serial port (IRQ7), two fixed time interval sources: 32kHz (IRQ5) and 2Hz (IRQ4), a 4-bit I/O port, SPI and SD-card interfaces and an 82C59A programmable interrupt controller.
+The system is equipped with an 80C88 (or compatible) CPU running at 5.5296MHz, 1MB SRAM, 128kB in-system programmable BIOS EEPROM, an RS232 compatible 16C550 serial port (IRQ7), two fixed time interval sources: 32kHz (IRQ5) and 2Hz (IRQ4), a 4-bit I/O port, SPI and SD-card interfaces and an 82C59A programmable interrupt controller.
 
 ![image small x86](pcb.png)
 ## [Schematics (pdf)](schematics.pdf) <--

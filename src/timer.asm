@@ -15,6 +15,15 @@
 .local ledctr
 .comm ledctr, 2, 2
 
+
+
+.local dailycounter_l
+.comm dailycounter_l, 2, 2
+.local dailycounter_h
+.comm dailycounter_h, 2, 2
+
+
+
 .section .text
 ##################################################
 
@@ -75,16 +84,16 @@ int_usr_timer:
         push    %ds
         mov     $DSEG, %ax
         mov     %ax, %ds
-        movb    (ledctr), %al
-        inc     %al
-        andb    $0x3F, %al
-        jnz     1f
-        call    led_on
-        jmp     2f
-1:
-        call    led_off
-2:
-        movb    %al, (ledctr)
+#        movb    (ledctr), %al
+#        inc     %al
+#        andb    $0x3F, %al
+#        jnz     1f
+#        call    led_on
+#        jmp     2f
+#1:
+#        call    led_off
+#2:
+#        movb    %al, (ledctr)
         pop     %ds
         pop     %ax
         iret
