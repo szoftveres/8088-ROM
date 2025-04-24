@@ -1,19 +1,17 @@
-# 8088-ROM
-
-This is a DIY x86 single-board computer and ROM BIOS that is capable of booting into [FreeDOS](https://www.freedos.org/) and running text-based DOS programs.
-The system is equipped with an 80C88 (or compatible) CPU running at 5.5296MHz, 1MB SRAM, 128kB in-system programmable BIOS EEPROM, an RS232 compatible 16C550 serial port (IRQ7), two fixed time interval sources: 32kHz (IRQ5) and 2Hz (IRQ4), a 4-bit I/O port, SPI and SD-card interfaces and an 82C59A programmable interrupt controller.
+# DIY x86 single-board computer and ROM BIOS.
+The computer is built around the 80C88 (or compatible) CPU and is capable of booting into [FreeDOS](https://www.freedos.org/) and running text-based DOS programs.
+It has 1MB RAM, 128kB in-system programmable BIOS EEPROM, an 82C59A programmable interrupt controller, an RS232 compatible serial port built around a 16C550, two fixed time interval sources and an I/O port (which can be configured as SPI and SD-card interface).
 
 ![image small x86](pcb.png)
 ## [Schematics (pdf)](schematics.pdf) <--
 ![pcbd](pcbd.png)
 ![image board3](board3.jpg)
 
+### Character I/O
+The computer has no VGA display- or keyboard interface, all interaction happens through the UART. In order to maintain text-based PC compatibility, the BIOS implements INT 10h (VGA character out) and INT 16h (keyboard character in) calls as UART character transfer; this gives terminal-like access to text-based programs, like the FreeDOS shell.
 
-
-BIOS INT 10h and INT 16h calls are re-routed to the (non- PC-standard address and IRQ) UART, which is the default character I/O device for this system.
-
-### SD card interface:
-A software-defined (bit-banged) SPI interface is implemented on top of the I/O port with all the necessary BIOS routines to read and write an SD card. On startup, the BIOS looks for an SD card on the SPI interface and searches for a valid MS-DOS partition on it. If a partition is found and has an exact size of 1.44MB, the BIOS gives access to it via standard BIOS INT 13h calls, as if it was an actual 1.44MB floppy disk. Subsequently, a standard IBM PC compatible OS boot process can take place.
+### SD card interface, and storage device access through BIOS INT 13h calls:
+A software-defined (bit-banged) SPI interface is implemented on top of the I/O port with all the necessary BIOS routines to read and write an SD card. On startup, the BIOS looks for an SD card on the SPI interface and searches for a valid MS-DOS partition on it. If a partition is found and has an exact size of 1.44MB, the BIOS can boot from it as if it was an actual 1.44MB floppy disk and gives read and write access to it via standard INT 13h calls.
 
 ![fddir1](fddir1.png)
 
