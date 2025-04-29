@@ -118,6 +118,7 @@ cpu_ok:
         cmpw    $WARMBOOT_REQUEST, %ax
         movw    $0x0000, %ds:warmboot_request
         jz      startover
+
         movw    %cs, %ax
         cmpw    $ROMSEG, %ax
         jb      warm_start
@@ -221,7 +222,7 @@ ram_det_bail:
         mov     %ax, %ds:(%di)      # store the result
 
 ##################################################
-# overwrite set up the interrupt table as well
+# memory layout init entry point
 
 warm_start:
         mov     $SSEG, %ax
@@ -231,7 +232,7 @@ warm_start:
         call    bda_init
 
 ##################################################
-# don't touch the interrupt table
+# warm start entry point
 
 startover:
         mov     $DSEG, %ax

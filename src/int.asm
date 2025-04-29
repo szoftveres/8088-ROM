@@ -9,10 +9,10 @@
 .endm
 
 # This code prepares the interrupt handler address in stack, and executes
-# a 'ret', which in turn jumps into this handler. At the end it copies the status
-# flaginto the flags register that's buried deep in the stack. Also makes sure that
-# in- and outgoing register values are preserved (the only exception is DS, which
-# is restored to its before call value)
+# a 'ret', which in turn jumps into this handler. At the end it copies the
+# status flag into the flags register that's buried deep in the stack. Also
+# makes sure that in- and outgoing register values are preserved (the only
+# exception is DS, which is restored to its before call value)
 
 # flags
 # CS
@@ -86,8 +86,8 @@
 int_init:
         push    %ax
         push    %di
-        push    %es             # save ES
-        push    %ds             # save DS
+        push    %es
+        push    %ds
 
         push    %cs
         pop     %ds
@@ -101,8 +101,9 @@ int_init:
         movsw                   # ISR address
         stosw                   # segments
         loop    1b
-        pop     %ds             # restore DS
-        pop     %es             # restore ES
+
+        pop     %ds
+        pop     %es
         pop     %di
         pop     %ax
         ret
@@ -111,21 +112,21 @@ int_init:
 
 int_table:
         .word   int_dummy       # INT 00 - Divide by zero
-        .word   int_dummy       # INT 01 - Single step
+        .word   int_trace       # INT 01 - Single step
         .word   int_dummy       # INT 02 - Non-maskable interrupt
         .word   int_dummy       # INT 03 - Debugger breakpoint
-        .word   int_dummy       # INT 04 - Integer overlow (into)
-        .word   int_bad         # INT 05
-        .word   int_bad         # INT 06
-        .word   int_bad         # INT 07
-        .word   int_dummy       # INT 08 - IRQ0
-        .word   int_dummy       # INT 09 - IRQ1
-        .word   int_dummy       # INT 0A - IRQ2
-        .word   int_dummy       # INT 0B - IRQ3
-        .word   int_timer_2hz   # INT 0C - IRQ4 - 2 Hz
-        .word   int_timer_32hz  # INT 0D - IRQ5 - 32 Hz
-        .word   int_dummy       # INT 0E - IRQ6
-        .word   int_uart        # INT 0F - IRQ7 - UART
+        .word   int_dummy       # INT 04 - Integer overflow (into)
+        .word   int_bad         # INT 05 - Print screen
+        .word   int_trace_on    # INT 06
+        .word   int_trace_off   # INT 07
+        .word   int_dummy       # INT 08 - 8259 IRQ0
+        .word   int_dummy       # INT 09 - 8259 IRQ1
+        .word   int_dummy       # INT 0A - 8259 IRQ2
+        .word   int_dummy       # INT 0B - 8259 IRQ3
+        .word   int_timer_2hz   # INT 0C - 8259 IRQ4 - 2 Hz
+        .word   int_timer_32hz  # INT 0D - 8259 IRQ5 - 32 Hz
+        .word   int_dummy       # INT 0E - 8259 IRQ6
+        .word   int_uart        # INT 0F - 8259 IRQ7 - UART
         .word   int_10h         # INT 10 - character output
         .word   int_11h         # INT 11 - equipment list
         .word   int_12h         # INT 12 - return RAM size
@@ -622,4 +623,77 @@ int_unimplemented_dispatch:
         .word   int_dbg                 # 0x1D
         .word   int_dbg                 # 0x1E
         .word   int_dbg                 # 0x1F
+
+
+##################################################
+# Single step trace interrupt and functions
+
+# flags
+# CS
+# PC <-
+# bp
+int_trace_on:
+        push    %bp
+        movw    %sp, %bp
+        orw     $0x0100, %ss:6(%bp)
+        pop     %bp
+        iret
+
+
+int_trace_off:
+        push    %bp
+        movw    %sp, %bp
+        andw    $0xFEFF, %ss:6(%bp)
+        pop     %bp
+        iret
+
+
+int_trace:
+        pushf
+        push    %ax
+        push    %bx
+        push    %cx
+        push    %dx
+        push    %si
+        push    %ds
+        push    %es
+        push    %bp
+
+
+        push    %si
+        movw    $text_int_trace_1, %si
+        call    print_str_cs
+        pop     %si
+
+        call    print_regs
+
+        mov     %sp, %bp
+
+        movw    %ss:20(%bp), %ax
+        call    print_h16
+        PRINT_CHAR $':'
+        movw    %ss:18(%bp), %ax
+        call    print_h16
+        NEWLINE
+
+
+        movw    $text_int_trace_2, %si
+        call    print_str_cs
+
+
+        pop     %bp
+        pop     %es
+        pop     %ds
+        pop     %si
+        pop     %dx
+        pop     %cx
+        pop     %bx
+        pop     %ax
+        popf
+        iret
+
+text_int_trace_1:
+        .asciz  "\n--trace--"
+text_int_trace_2:
+        .asciz  "---------\n"
 

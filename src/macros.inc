@@ -54,4 +54,13 @@
     pop     %ax
 .endm
 
-        
+##################################################
+
+.macro TRACEON
+    int     $0x6
+.endm
+
+.macro TRACEOFF
+    int     $0x7
+.endm
+

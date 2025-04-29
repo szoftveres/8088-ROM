@@ -114,23 +114,26 @@ get_next_cluster (unsigned int cluster) {
 }
 
 
-
+/* Get the n'th direntry from the sector */
 dir_entry_t*
-get_direntry (unsigned int n) {
-    char *buf;
-    int disk_rc;
-    unsigned int lba = ROOT_DIR_OFFSET + (n / (SECT_SIZE / sizeof(dir_entry_t)));
+get_direntry (unsigned int n, unsigned int lba) {
+    lba += (n / (SECT_SIZE / sizeof(dir_entry_t)));
     disk_read_lba_144(lba, disk_buffer);
     return (dir_entry_t*)&disk_buffer[(n % (SECT_SIZE / sizeof(dir_entry_t))) * sizeof(dir_entry_t)];
 }
 
 
+/* Translate cluster to sector address */
+unsigned int
+cluster_start_to_lba (unsigned int cluster) {
+    return CLUSTER_OFFSET + cluster - 2; /* The first two clusters are reserved */
+}
 
 void
 dump_file (unsigned int cluster, unsigned int lines) {
     int disk_rc;
     char* buf;
-    unsigned int lba = CLUSTER_OFFSET + cluster - 2; /* The first two clusters are reserved */
+    unsigned int lba = cluster_start_to_lba(cluster);
     disk_read_lba_144(lba, disk_buffer);
 
     buf_dump(disk_buffer, lines);
@@ -138,23 +141,16 @@ dump_file (unsigned int cluster, unsigned int lines) {
 
 
 
-void list_rootdir (void) {
+void walk_dirs (int level, unsigned int lba) {
     int i;
     dir_entry_t* direntry;
     int cluster;
     int c;
-
-    last_read_sector = 0xFFFF;
-
-    bios_printf(csegstr("\n"));
-
-    bios_disk_reset();
-    disk_read_lba_144(0, disk_buffer);
-    memcpy(&bpb, (disk_buffer + BPB_BASE), sizeof(bpb_144_t));
+    int tabs = level << 2;
 
     bios_printf(csegstr("\nnr   name           size      start\n"));
-    for (i = 0; i != bpb.max_root_entries; i++) {
-        direntry = get_direntry(i);
+    for (i = 2; i != bpb.max_root_entries; i++) {
+        direntry = get_direntry(i, lba);
         switch (*((char*)direntry)) {
           case 0x00: // free and no more
             i = bpb.max_root_entries - 1;
@@ -162,6 +158,9 @@ void list_rootdir (void) {
           case 0xE5: // free / deleted
             break;
           default:
+            for (c = 0; c != tabs; c++) {
+                bios_printf(csegstr(" "));
+            }
             memcpy(namebuf, direntry->name, 8);
             namebuf[8] = '\0';
             memcpy(extbuf, direntry->ext, 3);
@@ -169,8 +168,12 @@ void list_rootdir (void) {
             c = bios_printf(csegstr("%4x %s %s   %u"),
                     i, namebuf, extbuf,
                     direntry->size_l);
-            while (c != 30) {c += bios_printf(csegstr(" "));}
+            while (c != (30 + tabs)) {c += bios_printf(csegstr(" "));}
             c += bios_printf(csegstr("0x%x\n"), direntry->first_cluster);
+            if (direntry->attribs & 0x10) {
+                //bios_printf(csegstr("  >> subdir \n"));
+                walk_dirs(level + 1, cluster_start_to_lba(direntry->first_cluster));
+            }
 /*
             cluster = direntry->first_cluster;
             dump_file(cluster, 32);
@@ -182,6 +185,22 @@ void list_rootdir (void) {
         }
     }
 }
+
+
+
+void list_rootdir (void) {
+    last_read_sector = 0xFFFF;
+    unsigned int lba = ROOT_DIR_OFFSET; // Root dir
+
+    bios_printf(csegstr("\n"));
+
+    bios_disk_reset();
+    disk_read_lba_144(0, disk_buffer);
+    memcpy(&bpb, (disk_buffer + BPB_BASE), sizeof(bpb_144_t));
+
+    walk_dirs(0, lba);
+}
+
 
 /*
  * getting the position is easy: b % SECT_SIZE
