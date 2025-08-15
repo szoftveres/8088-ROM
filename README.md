@@ -1,7 +1,11 @@
 # DIY x86 single-board computer and ROM BIOS
-The computer is built around the 80C88 (or compatible) CPU and is capable of booting into [FreeDOS](https://www.freedos.org/) and running text-based DOS programs.
-
-It has 1MB RAM, 128kB in-system programmable EEPROM (containing the BIOS), 82C59A programmable interrupt controller, 16C550 UART, two fixed time interval sources and an I/O port (which can be used as SPI and SD-card interface).
+Designed to fulfill my desire to dig deep into low-level x86/PC/DOS, including hardware (8259 PIC, 16550 UART), BIOS and x86 assembly. Capable of running text-based DOS programs, including EDLIN, TASM and TCC.
+ * CPU: 80C88-2,   5.5296 MHz
+ * RAM: 896 kB
+ * ROM: 128 kB
+ * I/O: 16C550 UART
+ * Storage: SD Card (1.44 Mb partition)
+ * OS: [FreeDOS](https://www.freedos.org/)
 
 ## -> [Schematics (pdf)](schematics.pdf) <-
 
@@ -10,16 +14,16 @@ It has 1MB RAM, 128kB in-system programmable EEPROM (containing the BIOS), 82C59
 ![image board3](board3.jpg)
 
 ### Character I/O
-The computer has no VGA display- or keyboard interface, all interaction happens through the UART. In order to maintain text-based PC compatibility, the BIOS implements INT 10h (VGA character out) and INT 16h (keyboard character in) calls as UART character transfer; this gives terminal-like access to text-based programs, like the FreeDOS shell.
+The computer has no VGA adapter or keyboard interface, all interaction happens through the UART. In order to provide PC compatibility to text-based programs, INT 10h (VGA character out) and INT 16h (keyboard character in) BIOS calls are routed to the UART; this gives terminal-like access to text-based programs, like the FreeDOS shell.
 
 ### SD card interface, and storage device access through BIOS INT 13h calls:
-A software-defined (bit-banged) SPI interface is implemented on top of the I/O port with all the necessary BIOS routines to read and write an SD card.
+The computer has a basic I/O port (4 bit in, 4 bit out), a virtual SPI interface is implemented on top of it through software (bit-banging). A daughter board with an SD card slot plugs directly into the I/O port socket and the BIOS implements SD card access routines on the virtual SPI interface.
 
-On startup, the BIOS looks for an SD card on the SPI interface and searches for a valid MS-DOS partition on it. If a partition is found and has an exact size of 1.44MB, the BIOS can boot from it as if it was an actual 1.44MB floppy disk and gives read and write access to it via PC standard INT 13h calls.
+On startup, the BIOS looks for an SD card on the SPI interface and searches for a valid MS-DOS partition on it. If a partition is found and has an exact size of 1.44MB, the computer can boot from it and the OS can read from and write to it via PC standard BIOS INT 13h calls, just as if it was an actual 1.44MB floppy disk.
 
 ![fddir1](fddir1.png)
 
-Some features enable in-system EEPROM programming and development, like position-independent BIOS ROM code that can be copied to and executed from RAM, the ability to download 64k binary blocks via the serial interface, and EEPROM writing routines.
+The position-independent BIOS code can run from any 64k segment of the address space (even from RAM). Also, the BIOS provides routines for receiving 64k blocks via UART (e.g. a BIOS update), moving them around in the memory and burning them into the EEPROM - these features enable in-system EEPROM programming and development, without the need for an external EEPROM burner device.
 
 ## Memory Map
 
