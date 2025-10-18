@@ -1,6 +1,6 @@
 # Single-board DOS computer and ROM BIOS
 
-Capable of running [FreeDOS](https://www.freedos.org/) and text-based DOS programs.
+Capable of running [FreeDOS](https://www.freedos.org/) and text-based DOS programs. The BIOS resides in an in-system programmable EEPROM; the computer provides terminal-like text-based access via RS232 UART interface, and has an SD card based bootable permanent storage.
 
  * CPU: 80C88-2,   5.5296 MHz
  * RAM: 896 kB
