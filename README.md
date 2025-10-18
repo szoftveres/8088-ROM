@@ -1,11 +1,12 @@
-# DIY x86 single-board computer and ROM BIOS
-Designed to fulfill my desire to dig deep into low-level x86/PC/DOS, including hardware (8259 PIC, 16550 UART), BIOS and x86 assembly. Capable of running text-based DOS programs, including EDLIN, TASM and TCC.
+# Single-board DOS computer and ROM BIOS
+
+Capable of running [FreeDOS](https://www.freedos.org/) and text-based DOS programs.
+
  * CPU: 80C88-2,   5.5296 MHz
  * RAM: 896 kB
  * ROM: 128 kB
  * I/O: 16C550 UART
- * Storage: SD Card (1.44 Mb partition)
- * OS: [FreeDOS](https://www.freedos.org/)
+ * Storage: SD Card
 
 ## -> [Schematics (pdf)](schematics.pdf) <-
 
